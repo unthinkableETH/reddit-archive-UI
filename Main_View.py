@@ -6,6 +6,8 @@ import re
 import os
 import time
 
+st.write("Debug Block 1: Application Started")
+
 # Must be the first Streamlit command
 st.set_page_config(
     page_title="RepLadies Reddit Archive",
@@ -58,6 +60,7 @@ st.markdown("""
 
 @st.cache_resource(show_spinner=False, ttl=3600)  # Cache for 1 hour
 def get_database_connection():
+    st.write("Debug Block 2: Attempting Database Connection")
     conn = psycopg2.connect(
         dbname=st.secrets["postgres"]["dbname"],
         user=st.secrets["postgres"]["user"],
@@ -71,6 +74,7 @@ def get_database_connection():
         keepalives_count=5,
         application_name='repladies_streamlit_main'
     )
+    st.write("Debug Block 3: Database Connected Successfully")
     return conn
 
 # Helper function to convert UTC timestamp to a readable date
@@ -455,6 +459,9 @@ if search_query:
     start_timestamp = int(start_datetime.timestamp()) if 'start_datetime' in locals() else None
     end_timestamp = int(end_datetime.timestamp()) if 'end_datetime' in locals() else None
     
+    st.write("Debug Block 4: About to fetch posts (search)")
+    st.write(f"Debug Info: offset={offset}, posts_per_page={posts_per_page}, sort_by={sort_by}")
+    
     posts, comments = search_reddit(
         search_query, 
         search_type, 
@@ -465,17 +472,14 @@ if search_query:
         start_datetime if 'start_datetime' in locals() else None,
         end_datetime if 'end_datetime' in locals() else None
     )
-    
-    total_results = get_total_search_results(
-        search_query, 
-        search_type, 
-        exact_match,
-        start_timestamp,
-        end_timestamp
-    )
+    st.write(f"Debug Block 5: Posts fetched. Number of posts: {len(posts) if posts else 0}")
 else:
     search_terms = []
+    st.write("Debug Block 4: About to fetch posts (no search)")
+    st.write(f"Debug Info: offset={offset}, posts_per_page={posts_per_page}, sort_by={sort_by}")
+    
     posts = fetch_posts(offset, posts_per_page, sort_by)
+    st.write(f"Debug Block 5: Posts fetched. Number of posts: {len(posts) if posts else 0}")
     comments = []
     conn = get_database_connection()
     with conn.cursor(cursor_factory=RealDictCursor) as cursor:
@@ -488,8 +492,10 @@ page_num = min(page_num, total_pages)
 
 # Display results
 if total_results == 0:
+    st.write("Debug Block 6: No results to display")
     st.markdown("<h2 style='text-align: center; color: red; font-weight: bold;'>No results found</h2>", unsafe_allow_html=True)
 else:
+    st.write("Debug Block 6: About to display posts")
     st.write(f"Page {page_num} of {total_pages}")
     
     if search_query:
@@ -558,6 +564,7 @@ else:
             st.markdown("---")
 
     if page_num == total_pages:
+        st.write("Debug Block 7: Finished displaying posts")
         st.markdown("<h2 style='text-align: center; color: red; font-weight: bold;'>You have reached the end of the results.</h2>", unsafe_allow_html=True)
 
     # Pagination controls
