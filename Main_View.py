@@ -6,8 +6,6 @@ import re
 import os
 import time
 
-st.write("Debug Block 1: Application Started")
-
 # Must be the first Streamlit command
 st.set_page_config(
     page_title="RepLadies Reddit Archive",
@@ -18,6 +16,8 @@ st.set_page_config(
         'About': "RepLadies Reddit Archive"
     }
 )
+
+st.write("Debug Block 1: Application Started")
 
 # Dark theme styling
 st.markdown("""
