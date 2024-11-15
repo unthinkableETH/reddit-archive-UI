@@ -276,77 +276,44 @@ def fetch_posts(offset, limit, sort_by="newest"):
         except:
             pass
 
-def fetch_comments_for_post(post_id, sort_by="most_upvotes"):
-    """Fetch all comments for a given post"""
+def fetch_comments_for_post(post_id, sort_by="newest"):
+    """Fetch comments for a specific post"""
     conn = get_database_connection()
-    with conn.cursor(cursor_factory=RealDictCursor) as cursor:
-        order_by = get_sort_order(sort_by)
-        cursor.execute(f"""
-            SELECT id, body, author, created_utc, score, 
-                   submission_id, parent_id, subreddit
-            FROM comments 
-            WHERE submission_id = %s 
-            ORDER BY {order_by}
-        """, (add_prefix(post_id, 't3'),))
-        return cursor.fetchall()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+            order_by = get_sort_order(sort_by)
+            cursor.execute(f"""
+                SELECT id, body, author, created_utc, score,
+                       submission_id, parent_id
+                FROM comments
+                WHERE submission_id = %s
+                ORDER BY {order_by}
+            """, (post_id,))
+            return cursor.fetchall()
+    except Exception as e:
+        st.error(f"Error fetching comments: {type(e).__name__}")
+        st.error(str(e))
+        return []
 
 def display_comments(comments, search_terms=None):
-    """Display comments in a hierarchical structure"""
+    """Display comments in a threaded format"""
     if not comments:
-        st.write("No comments yet.")
+        st.write("No comments found.")
         return
-        
-    comment_dict = {}
-    top_level_comments = []
-    
-    # First pass: create dictionary of all comments
+
     for comment in comments:
-        comment_dict[clean_reddit_id(comment['id'])] = {
-            'data': comment,
-            'replies': [],
-            'level': 0
-        }
-    
-    # Second pass: build the hierarchy
-    for comment in comments:
-        parent_id = clean_reddit_id(comment['parent_id'])
-        comment_id = clean_reddit_id(comment['id'])
-        
-        if comment['parent_id'].startswith('t3_'):  # Top-level comment
-            top_level_comments.append(comment_id)
-        elif parent_id in comment_dict:  # Reply to another comment
-            comment_dict[parent_id]['replies'].append(comment_id)
-            comment_dict[comment_id]['level'] = comment_dict[parent_id]['level'] + 1
-    
-    def display_comment_tree(comment_id, level=0):
-        if comment_id not in comment_dict:
-            return
-            
-        comment = comment_dict[comment_id]['data']
-        replies = comment_dict[comment_id]['replies']
-        level = comment_dict[comment_id]['level']
-        
         body = comment['body']
         if search_terms:
             body = highlight_search_terms(body, search_terms)
         
-        left_margin = min(level * 20, 200)
-        
         st.markdown(
-            f"""<div style='margin-left: {left_margin}px; padding: 8px; border-left: 2px solid #ccc;'>
-                <strong><a href="/Profile_View?username={comment['author']}">u/{comment['author']}</a></strong> - 
+            f"""<div style='padding: 8px; border-left: 2px solid #ccc;'>
+                <strong>u/{comment['author']}</strong> - 
                 <i>Score: {comment['score']} | Posted on: {format_date(comment['created_utc'])}</i><br>
                 <p>{body}</p>
             </div>""", 
             unsafe_allow_html=True
         )
-        
-        for reply_id in replies:
-            display_comment_tree(reply_id)
-    
-    # Display all top-level comments and their replies
-    for comment_id in top_level_comments:
-        display_comment_tree(comment_id)
 
 def get_post_url(link_id, comment_id):
     post_id = link_id.split('_')[1] if '_' in link_id else link_id
