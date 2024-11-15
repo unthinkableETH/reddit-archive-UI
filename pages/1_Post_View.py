@@ -1,11 +1,10 @@
-import sqlite3
-from datetime import datetime
+import psycopg2
+from psycopg2.extras import RealDictCursor
 import streamlit as st
+from datetime import datetime
 import re
 import os
-import requests
-import gzip           # Required - Database decompression
-import requests 
+import time
 
 # Must be the first Streamlit command
 st.set_page_config(
@@ -57,33 +56,6 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Reuse your database connection and helper functions
-@st.cache_resource
-def get_database_connection():
-    db_path = 'reddit_data.db'
-    if not os.path.exists(db_path):
-        with st.spinner("First time setup: Downloading database... This may take a few minutes..."):
-            download_from_s3(db_path)
-    
-    conn = sqlite3.connect(db_path, check_same_thread=False)
-    conn.execute('PRAGMA journal_mode=WAL')
-    return conn
-
-def download_from_s3(db_path):
-    s3 = boto3.client('s3', config=Config(signature_version=UNSIGNED))
-    try:
-        s3.download_file('repladies-archive', 'reddit_data.db', db_path)
-    except Exception as e:
-        st.error(f"Error downloading database: {e}")
-        raise e
-
-def format_date(utc_timestamp):
-    try:
-        utc_timestamp = int(utc_timestamp)
-        return datetime.utcfromtimestamp(utc_timestamp).strftime('%Y-%m-%d %H:%M:%S')
-    except ValueError:
-        return "Invalid Date"
-
 # Get post and comment IDs from URL parameters
 params = st.query_params
 post_id = params.get("post_id")
@@ -105,6 +77,7 @@ if not post_id:
 # Sidebar controls
 st.sidebar.header("Post View")
 st.sidebar.subheader("Comment Controls")
+
 comment_sort = st.sidebar.selectbox(
     "Sort comments by",
     ["most_upvotes", "newest", "oldest"],
@@ -119,19 +92,62 @@ comment_sort = st.sidebar.selectbox(
 bring_to_top = st.sidebar.toggle("Bring highlighted comment to top", value=True)
 highlight_comment = st.sidebar.toggle("Highlight search result comment", value=True)
 
-# Fetch post and comments
-conn = get_database_connection()
-cursor = conn.cursor()
+@st.cache_resource
+def get_database_connection():
+    retries = 3
+    for attempt in range(retries):
+        try:
+            conn = psycopg2.connect(
+                dbname=st.secrets["postgres"]["dbname"],
+                user=st.secrets["postgres"]["user"],
+                password=st.secrets["postgres"]["password"],
+                host=st.secrets["postgres"]["host"],
+                port=st.secrets["postgres"]["port"],
+                connect_timeout=10
+            )
+            return conn
+        except psycopg2.OperationalError as e:
+            if attempt == retries - 1:
+                st.error(f"Failed to connect to database after {retries} attempts: {e}")
+                raise
+            st.warning(f"Connection attempt {attempt + 1} failed, retrying...")
+            time.sleep(2 ** attempt)
 
-def fetch_post(post_id):
+def clean_reddit_id(reddit_id, keep_prefix=False):
+    """Standardize Reddit ID format"""
+    if not reddit_id:
+        return None
+    if reddit_id.startswith(('t1_', 't3_')):
+        return reddit_id if keep_prefix else reddit_id.split('_')[1]
+    return reddit_id
+
+def add_prefix(id_str, type_prefix):
+    """Add Reddit type prefix if missing"""
+    if not id_str:
+        return None
+    if id_str.startswith(('t1_', 't3_')):
+        return id_str
+    return f"{type_prefix}_{id_str}"
+
+def format_date(utc_timestamp):
+    """Convert UTC timestamp to readable date"""
+    try:
+        utc_timestamp = int(utc_timestamp)
+        return datetime.utcfromtimestamp(utc_timestamp).strftime('%B %d, %Y %I:%M %p')
+    except ValueError:
+        return "Invalid Date"
+
+def fetch_post(cursor, post_id):
+    """Fetch post details from database"""
     cursor.execute("""
         SELECT title, selftext, author, created_utc, id, score, num_comments, subreddit
         FROM submissions 
-        WHERE id = ?
+        WHERE id = %s
     """, (post_id,))
     return cursor.fetchone()
 
-def fetch_comments_with_hierarchy(post_id, sort_order="most_upvotes"):
+def fetch_comments_with_hierarchy(cursor, post_id, sort_order="most_upvotes"):
+    """Fetch and organize comments in hierarchy"""
     order_clause = {
         "most_upvotes": "score DESC",
         "newest": "created_utc DESC",
@@ -140,170 +156,158 @@ def fetch_comments_with_hierarchy(post_id, sort_order="most_upvotes"):
 
     try:
         cursor.execute(f"""
-            SELECT id, link_id, parent_id, author, body, created_utc, score, subreddit 
+            SELECT id, submission_id as link_id, parent_id, author, body, created_utc, score, subreddit 
             FROM comments 
-            WHERE link_id = ? 
+            WHERE submission_id = %s 
             ORDER BY {order_clause}
-        """, (f't3_{post_id}',))
+        """, (add_prefix(post_id, 't3'),))
         comments = cursor.fetchall()
 
-        comment_dict = {comment[0]: comment for comment in comments}
         nested_comments = []
+        comment_dict = {comment['id']: comment for comment in comments}
 
         def add_nested_comments(comment, level=0):
             nested_comments.append((comment, level))
-            for reply_id, reply in comment_dict.items():
-                if reply[2] == f't1_{comment[0]}':
+            for reply in comments:
+                if reply['parent_id'] == f't1_{clean_reddit_id(comment["id"])}':
                     add_nested_comments(reply, level + 1)
 
         for comment in comments:
-            if comment[2] == f't3_{post_id}':
+            if comment['parent_id'] == f't3_{post_id}':
                 add_nested_comments(comment)
 
         return nested_comments
-    except sqlite3.DatabaseError as e:
-        st.error(f"Error fetching comments for post {post_id}: {e}")
+    except Exception as e:
+        st.error(f"Error fetching comments: {e}")
         return []
 
-# Display post and comments
-post = fetch_post(post_id)
-if post:
-    # Display post details
-    st.title(post[0])  # Title
-    st.write(post[1])  # Selftext
-    formatted_date = format_date(post[3])
-    st.write(f"Score: {post[5]} | Comments: {post[6]} | Posted on: {formatted_date}")
-    st.markdown(f'Posted by <a href="/Profile_View?username={post[2]}">u/{post[2]}</a> in r/{post[7]}', unsafe_allow_html=True)
-    st.markdown("---")
-
-    # Fetch and display comments
-    nested_comments = fetch_comments_with_hierarchy(post_id, sort_order=comment_sort)
-    
-    # After displaying the highlighted chain, keep track of displayed comments
-    displayed_comment_ids = set()
-
-    if highlight_comment_id and highlight_comment and bring_to_top:
-        # Create a lookup dictionary for quick access
-        comment_lookup = {comment[0]: (comment, level) for comment, level in nested_comments}
+try:
+    # Fetch post and comments
+    conn = get_database_connection()
+    with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+        post = fetch_post(cursor, post_id)
         
-        # Get the highlighted comment
-        highlighted_comment = comment_lookup.get(highlight_comment_id)
-        if highlighted_comment:
-            highlighted_chain = []
-            seen_comments = set()
+        if post:
+            # Display post details
+            st.title(post['title'])
+            st.write(post['selftext'])
+            formatted_date = format_date(post['created_utc'])
+            st.write(f"Score: {post['score']} | Comments: {post['num_comments']} | Posted on: {formatted_date}")
+            st.markdown(f'Posted by <a href="/Profile_View?username={post["author"]}">u/{post["author"]}</a> in r/{post["subreddit"]}', unsafe_allow_html=True)
+            st.markdown("---")
+
+            # Fetch and display comments
+            nested_comments = fetch_comments_with_hierarchy(cursor, post_id, sort_order=comment_sort)
             
-            # Get the direct parent chain
-            current_comment = highlighted_comment
-            while current_comment:
-                comment, level = current_comment
-                
-                # Add to chain if not already seen
-                if comment[0] not in seen_comments:
-                    highlighted_chain.insert(0, (comment, level))
-                    seen_comments.add(comment[0])
-                
-                # Get parent ID
-                parent_id = comment[2].replace('t1_', '') if comment[2].startswith('t1_') else None
-                
-                # Stop if we reach the top-level comment (parent is the post)
-                if comment[2].startswith('t3_'):
-                    break
+            # Create a lookup dictionary for quick access
+            comment_lookup = {clean_reddit_id(comment['id']): (comment, level) for comment, level in nested_comments}
+            
+            # Handle highlighted comment if it exists
+            if highlight_comment_id and highlight_comment and bring_to_top:
+                highlighted_comment = comment_lookup.get(clean_reddit_id(highlight_comment_id))
+                if highlighted_comment:
+                    highlighted_chain = []
+                    seen_comments = set()
                     
-                # Get parent comment
-                current_comment = comment_lookup.get(parent_id)
-                if not current_comment:
-                    break
+                    # Get the direct parent chain
+                    current_comment = highlighted_comment
+                    while current_comment:
+                        comment, level = current_comment
+                        
+                        if clean_reddit_id(comment['id']) not in seen_comments:
+                            highlighted_chain.insert(0, (comment, level))
+                            seen_comments.add(clean_reddit_id(comment['id']))
+                        
+                        parent_id = clean_reddit_id(comment['parent_id'])
+                        
+                        if comment['parent_id'].startswith('t3_'):
+                            break
+                            
+                        current_comment = comment_lookup.get(parent_id)
+                        if not current_comment:
+                            break
 
-            # Get all children and sub-children of the highlighted comment
-            def get_all_children(comment_id, base_level):
-                children = []
-                for comment, level in nested_comments:
-                    if comment[2] == f't1_{comment_id}' and comment[0] not in seen_comments:
-                        children.append((comment, level))
-                        seen_comments.add(comment[0])
-                        # Recursively get all sub-children
-                        children.extend(get_all_children(comment[0], level + 1))
-                return children
+                    # Get all children recursively
+                    def get_all_children(comment_id, base_level):
+                        children = []
+                        for comment, level in nested_comments:
+                            if comment['parent_id'] == f't1_{clean_reddit_id(comment_id)}' and clean_reddit_id(comment['id']) not in seen_comments:
+                                children.append((comment, level))
+                                seen_comments.add(clean_reddit_id(comment['id']))
+                                children.extend(get_all_children(comment['id'], level + 1))
+                        return children
 
-            # Add all children of the highlighted comment
-            children = get_all_children(highlight_comment_id, highlighted_comment[1] + 1)
-            highlighted_chain.extend(children)
+                    children = get_all_children(highlight_comment_id, highlighted_comment[1] + 1)
+                    highlighted_chain.extend(children)
 
-            # Display the highlighted chain
-            if highlighted_chain:
-                st.markdown("### Highlighted Comment Thread:")
-                for comment, level in highlighted_chain:
+                    if highlighted_chain:
+                        st.markdown("### Highlighted Comment Thread:")
+                        for comment, level in highlighted_chain:
+                            left_margin = min(level * 20, 200)
+                            style = f"margin-left: {left_margin}px; padding: 8px; border-left: 2px solid #ccc;"
+                            
+                            is_highlighted = clean_reddit_id(comment['id']) == clean_reddit_id(highlight_comment_id)
+                            formatted_body = comment['body'].replace('\n', '<br>')
+                            
+                            if is_highlighted:
+                                st.markdown(
+                                    f"""<div style='{style}'>
+                                        <strong>Level {level} - <a href="/Profile_View?username={comment['author']}">u/{comment['author']}</a></strong> - 
+                                        <i>Score: {comment['score']} | Posted on: {format_date(comment['created_utc'])}</i><br>
+                                        <p style="color: red; text-decoration: underline;">{formatted_body}</p>
+                                    </div>""", 
+                                    unsafe_allow_html=True
+                                )
+                            else:
+                                st.markdown(
+                                    f"""<div style='{style}'>
+                                        <strong>Level {level} - <a href="/Profile_View?username={comment['author']}">u/{comment['author']}</a></strong> - 
+                                        <i>Score: {comment['score']} | Posted on: {format_date(comment['created_utc'])}</i><br>
+                                        <p>{formatted_body}</p>
+                                    </div>""", 
+                                    unsafe_allow_html=True
+                                )
+                            st.markdown("---")
+
+                    displayed_comment_ids = seen_comments
+                else:
+                    displayed_comment_ids = set()
+            else:
+                displayed_comment_ids = set()
+
+            # Display remaining comments
+            st.markdown("### All Comments:")
+            for comment, level in nested_comments:
+                if clean_reddit_id(comment['id']) not in displayed_comment_ids:
                     left_margin = min(level * 20, 200)
                     style = f"margin-left: {left_margin}px; padding: 8px; border-left: 2px solid #ccc;"
                     
-                    # Only highlight the specific comment that was searched for
-                    is_highlighted = comment[0] == highlight_comment_id
+                    is_highlighted = clean_reddit_id(comment['id']) == clean_reddit_id(highlight_comment_id) and highlight_comment
+                    formatted_body = comment['body'].replace('\n', '<br>')
                     
                     if is_highlighted:
-                        # Replace newlines with <br> tags and wrap the entire text in the styled paragraph
-                        formatted_body = comment[4].replace('\n', '<br>')
                         st.markdown(
-                            f"""
-                            <div style='{style}'>
-                                <strong>Level {level} - <a href="/Profile_View?username={comment[3]}">u/{comment[3]}</a></strong> - 
-                                <i>Score: {comment[6]} | Posted on: {format_date(comment[5])}</i><br>
+                            f"""<div style='{style}'>
+                                <strong>Level {level} - <a href="/Profile_View?username={comment['author']}">u/{comment['author']}</a></strong> - 
+                                <i>Score: {comment['score']} | Posted on: {format_date(comment['created_utc'])}</i><br>
                                 <p style="color: red; text-decoration: underline;">{formatted_body}</p>
-                            </div>
-                            """, unsafe_allow_html=True
+                            </div>""", 
+                            unsafe_allow_html=True
                         )
                     else:
                         st.markdown(
-                            f"""
-                            <div style='{style}'>
-                                <strong>Level {level} - <a href="/Profile_View?username={comment[3]}">u/{comment[3]}</a></strong> - 
-                                <i>Score: {comment[6]} | Posted on: {format_date(comment[5])}</i><br>
-                                <p>{comment[4]}</p>
-                            </div>
-                            """, unsafe_allow_html=True
+                            f"""<div style='{style}'>
+                                <strong>Level {level} - <a href="/Profile_View?username={comment['author']}">u/{comment['author']}</a></strong> - 
+                                <i>Score: {comment['score']} | Posted on: {format_date(comment['created_utc'])}</i><br>
+                                <p>{formatted_body}</p>
+                            </div>""", 
+                            unsafe_allow_html=True
                         )
                     st.markdown("---")
-            
-            st.markdown("### All Comments:")
-
-        # Use seen_comments set to skip duplicates in main comment display
-        displayed_comment_ids = seen_comments
-
-    # Display all comments
-    st.markdown("### All Comments:")
-    for comment, level in nested_comments:
-        # Calculate indentation based on comment level
-        left_margin = min(level * 20, 200)
-        
-        # Check if this is the highlighted comment
-        is_highlighted = comment[0] == highlight_comment_id and highlight_comment
-        
-        # Build the style string
-        style = f"margin-left: {left_margin}px; padding: 8px; border-left: 2px solid #ccc;"
-        
-        # Apply highlighting to the entire comment div if it's the highlighted comment
-        if is_highlighted:
-            # Replace newlines with <br> tags and wrap the entire text in the styled paragraph
-            formatted_body = comment[4].replace('\n', '<br>')
-            st.markdown(
-                f"""
-                <div style='{style}'>
-                    <strong>Level {level} - <a href="/Profile_View?username={comment[3]}">u/{comment[3]}</a></strong> - 
-                    <i>Score: {comment[6]} | Posted on: {format_date(comment[5])}</i><br>
-                    <p style="color: red; text-decoration: underline;">{formatted_body}</p>
-                </div>
-                """, unsafe_allow_html=True
-            )
         else:
-            st.markdown(
-                f"""
-                <div style='{style}'>
-                    <strong>Level {level} - <a href="/Profile_View?username={comment[3]}">u/{comment[3]}</a></strong> - 
-                    <i>Score: {comment[6]} | Posted on: {format_date(comment[5])}</i><br>
-                    <p>{comment[4]}</p>
-                </div>
-                """, unsafe_allow_html=True
-            )
-        st.markdown("---")
+            st.error("Post not found")
 
-else:
-    st.error("Post not found")
+except psycopg2.Error as e:
+    st.error(f"Database error: {e}")
+except Exception as e:
+    st.error(f"An unexpected error occurred: {e}")
