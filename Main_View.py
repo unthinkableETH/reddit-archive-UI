@@ -61,30 +61,18 @@ st.markdown("""
 @st.cache_resource(show_spinner=False)
 def get_database_connection():
     st.write("Debug Block 2: Attempting Database Connection")
-    
-    # Debug connection parameters (redacting password)
-    connection_params = {
-        'dbname': st.secrets["postgres"]["dbname"],
-        'user': st.secrets["postgres"]["user"],
-        'host': st.secrets["postgres"]["host"],
-        'port': st.secrets["postgres"]["port"]
-    }
-    st.write(f"Connection Parameters: {connection_params}")
-    
-    try:
-        conn = psycopg2.connect(
-            dbname=st.secrets["postgres"]["dbname"],
-            user=st.secrets["postgres"]["user"],
-            password=st.secrets["postgres"]["password"],
-            host=st.secrets["postgres"]["host"],
-            port=st.secrets["postgres"]["port"],
-            connect_timeout=10
-        )
-        st.write("Debug Block 3: Database Connected Successfully")
-        return conn
-    except Exception as e:
-        st.error(f"Connection Error: {type(e).__name__}")
-        raise
+    conn = psycopg2.connect(
+        dbname=st.secrets["postgres"]["dbname"],
+        user=st.secrets["postgres"]["user"],
+        password=st.secrets["postgres"]["password"],
+        host=st.secrets["postgres"]["host"],
+        port=st.secrets["postgres"]["port"],
+        connect_timeout=10
+    )
+    # Set autocommit mode
+    conn.set_session(autocommit=True)
+    st.write("Debug Block 3: Database Connected Successfully")
+    return conn
 
 # Helper function to convert UTC timestamp to a readable date
 def format_date(utc_timestamp):
@@ -265,16 +253,28 @@ def search_reddit(query, search_type, exact_match, offset, limit, sort_by="newes
 def fetch_posts(offset, limit, sort_by="newest"):
     """Fetch posts with pagination"""
     conn = get_database_connection()
-    with conn.cursor(cursor_factory=RealDictCursor) as cursor:
-        order_by = get_sort_order(sort_by)
-        cursor.execute(f"""
-            SELECT id, title, selftext, author, created_utc,
-                   score, num_comments, subreddit
-            FROM submissions
-            ORDER BY {order_by}
-            LIMIT %s OFFSET %s
-        """, (limit, offset))
-        return cursor.fetchall()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+            # Rollback any failed transaction
+            conn.rollback()
+            
+            order_by = get_sort_order(sort_by)
+            cursor.execute(f"""
+                SELECT id, title, selftext, author, created_utc, score, num_comments, subreddit
+                FROM submissions
+                ORDER BY {order_by}
+                LIMIT %s OFFSET %s
+            """, (limit, offset))
+            return cursor.fetchall()
+    except Exception as e:
+        st.error(f"Error fetching posts: {type(e).__name__}")
+        st.error(str(e))
+        return []
+    finally:
+        try:
+            conn.commit()
+        except:
+            pass
 
 def fetch_comments_for_post(post_id, sort_by="most_upvotes"):
     """Fetch all comments for a given post"""
