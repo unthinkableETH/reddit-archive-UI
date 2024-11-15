@@ -56,26 +56,22 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-@st.cache_resource
+@st.cache_resource(show_spinner=False, ttl=3600)  # Cache for 1 hour
 def get_database_connection():
-    retries = 3
-    for attempt in range(retries):
-        try:
-            conn = psycopg2.connect(
-                dbname=st.secrets["postgres"]["dbname"],
-                user=st.secrets["postgres"]["user"],
-                password=st.secrets["postgres"]["password"],
-                host=st.secrets["postgres"]["host"],
-                port=st.secrets["postgres"]["port"],
-                connect_timeout=10
-            )
-            return conn
-        except psycopg2.OperationalError as e:
-            if attempt == retries - 1:
-                st.error(f"Failed to connect to database after {retries} attempts: {e}")
-                raise
-            st.warning(f"Connection attempt {attempt + 1} failed, retrying...")
-            time.sleep(2 ** attempt)
+    conn = psycopg2.connect(
+        dbname=st.secrets["postgres"]["dbname"],
+        user=st.secrets["postgres"]["user"],
+        password=st.secrets["postgres"]["password"],
+        host=st.secrets["postgres"]["host"],
+        port=st.secrets["postgres"]["port"],
+        connect_timeout=30,
+        keepalives=1,
+        keepalives_idle=30,
+        keepalives_interval=10,
+        keepalives_count=5,
+        application_name='repladies_streamlit_main'
+    )
+    return conn
 
 # Helper function to convert UTC timestamp to a readable date
 def format_date(utc_timestamp):
