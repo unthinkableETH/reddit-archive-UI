@@ -58,24 +58,33 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-@st.cache_resource(show_spinner=False, ttl=3600)  # Cache for 1 hour
+@st.cache_resource(show_spinner=False)
 def get_database_connection():
     st.write("Debug Block 2: Attempting Database Connection")
-    conn = psycopg2.connect(
-        dbname=st.secrets["postgres"]["dbname"],
-        user=st.secrets["postgres"]["user"],
-        password=st.secrets["postgres"]["password"],
-        host=st.secrets["postgres"]["host"],
-        port=st.secrets["postgres"]["port"],
-        connect_timeout=30,
-        keepalives=1,
-        keepalives_idle=30,
-        keepalives_interval=10,
-        keepalives_count=5,
-        application_name='repladies_streamlit_main'
-    )
-    st.write("Debug Block 3: Database Connected Successfully")
-    return conn
+    
+    # Debug connection parameters (redacting password)
+    connection_params = {
+        'dbname': st.secrets["postgres"]["dbname"],
+        'user': st.secrets["postgres"]["user"],
+        'host': st.secrets["postgres"]["host"],
+        'port': st.secrets["postgres"]["port"]
+    }
+    st.write(f"Connection Parameters: {connection_params}")
+    
+    try:
+        conn = psycopg2.connect(
+            dbname=st.secrets["postgres"]["dbname"],
+            user=st.secrets["postgres"]["user"],
+            password=st.secrets["postgres"]["password"],
+            host=st.secrets["postgres"]["host"],
+            port=st.secrets["postgres"]["port"],
+            connect_timeout=10
+        )
+        st.write("Debug Block 3: Database Connected Successfully")
+        return conn
+    except Exception as e:
+        st.error(f"Connection Error: {type(e).__name__}")
+        raise
 
 # Helper function to convert UTC timestamp to a readable date
 def format_date(utc_timestamp):
