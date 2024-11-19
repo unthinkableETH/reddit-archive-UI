@@ -7,6 +7,11 @@ import os
 import time
 from functools import lru_cache
 
+# Constants
+POSTS_PER_PAGE = 20
+COMMENTS_PER_POST = 50
+CACHE_TTL = 3600  # 1 hour
+
 # Must be the first Streamlit command
 st.set_page_config(
     page_title="RepLadies Reddit Archive",
@@ -18,8 +23,6 @@ st.set_page_config(
     }
 )
 
-st.write("Debug Block 1: Application Started")
-
 # Dark theme styling
 st.markdown("""
     <style>
@@ -29,269 +32,82 @@ st.markdown("""
         }
         
         /* Sidebar */
-        [data-testid="stSidebar"] {
-            background-color: #262730;
-        }
-        
-        /* Card backgrounds */
-        [data-testid="stExpander"] {
-            background-color: #262730;
+        .css-1d391kg {
+            background-color: #1E1E1E;
         }
         
         /* Text colors */
-        .stMarkdown {
-            color: #FAFAFA;
+        .stMarkdown, .stText {
+            color: #FFFFFF;
         }
         
-        /* All links should be blue */
+        /* Links */
         a {
-            color: #4A9EFF !important;
-        }
-        a:hover {
-            color: #7CB9FF !important;
+            color: #FF4B4B;
             text-decoration: none;
         }
         
-        /* Dividers */
-        hr {
-            border-color: #333333;
+        a:hover {
+            color: #FF7171;
+            text-decoration: underline;
+        }
+        
+        /* Buttons */
+        .stButton>button {
+            background-color: #FF4B4B;
+            color: white;
+        }
+        
+        .stButton>button:hover {
+            background-color: #FF7171;
         }
     </style>
 """, unsafe_allow_html=True)
 
-@st.cache_resource(ttl=3600)
-def get_database_connection():
-    conn = psycopg2.connect(
-        dbname=st.secrets["postgres"]["dbname"],
-        user=st.secrets["postgres"]["user"],
-        password=st.secrets["postgres"]["password"],
-        host=st.secrets["postgres"]["host"],
-        port=st.secrets["postgres"]["port"],
-        connect_timeout=10
-    )
-    conn.set_session(autocommit=True)
-    return conn
+# Helper Functions
+def get_sort_order(sort_by):
+    """Convert sort selection to SQL ORDER BY clause"""
+    sort_mapping = {
+        "newest": "created_utc DESC",
+        "oldest": "created_utc ASC",
+        "most_upvotes": "score DESC",
+        "most_comments": "num_comments DESC"
+    }
+    return sort_mapping.get(sort_by, "created_utc DESC")
 
-# Helper function to convert UTC timestamp to a readable date
-def format_date(utc_timestamp):
-    try:
-        utc_timestamp = int(utc_timestamp)
-        return datetime.utcfromtimestamp(utc_timestamp).strftime('%B %d, %Y %I:%M %p')
-    except ValueError:
-        return "Invalid Date"
-
-# Helper function to normalize text for exact match
-def normalize_text(text):
-    return " ".join(text.lower().split())
-
-def highlight_search_terms(text, search_terms):
-    """Highlight search terms in text with yellow background"""
-    if not text or not search_terms:
-        return text
-    
-    # Escape HTML special characters first
-    text = text.replace("<", "&lt;").replace(">", "&gt;")
-    
-    # Create a pattern that matches any of the search terms (case insensitive)
-    pattern = '|'.join(map(re.escape, search_terms))
-    if not pattern:
-        return text
-    
-    def highlight_match(match):
-        return f'<span style="background-color: #ffd700;">{match.group(0)}</span>'
-    
-    return re.sub(f'({pattern})', highlight_match, text, flags=re.IGNORECASE)
-
-def get_total_search_results(query, search_type, exact_match, start_timestamp=None, end_timestamp=None):
-    """Get total number of results for pagination"""
-    conn = get_database_connection()
-    with conn.cursor(cursor_factory=RealDictCursor) as cursor:
-        date_filter = ""
-        params = []
-        if start_timestamp:
-            date_filter += " AND created_utc >= %s"
-            params.append(start_timestamp)
-        if end_timestamp:
-            date_filter += " AND created_utc <= %s"
-            params.append(end_timestamp)
-
-        total = 0
-        if exact_match:
-            normalized_query = normalize_text(query)
-            if search_type in ["post_title", "post_body", "everything"]:
-                where_clause = {
-                    "post_title": "LOWER(title) LIKE LOWER(%s)",
-                    "post_body": "LOWER(selftext) LIKE LOWER(%s)",
-                    "everything": "LOWER(title || ' ' || selftext) LIKE LOWER(%s)"
-                }.get(search_type)
-                cursor.execute(f"""
-                    SELECT COUNT(*) as count
-                    FROM submissions 
-                    WHERE {where_clause} {date_filter}
-                """, (f"%{normalized_query}%", *params))
-                total += cursor.fetchone()['count']
-
-            if search_type in ["comments", "everything"]:
-                cursor.execute(f"""
-                    SELECT COUNT(*) as count
-                    FROM comments 
-                    WHERE LOWER(body) LIKE LOWER(%s) {date_filter}
-                """, (f"%{normalized_query}%", *params))
-                total += cursor.fetchone()['count']
-        else:
-            search_terms = ' & '.join(query.split())
-            if search_type in ["post_title", "post_body", "everything"]:
-                cursor.execute(f"""
-                    SELECT COUNT(*) as count
-                    FROM submissions 
-                    WHERE search_vector @@ to_tsquery('english', %s) {date_filter}
-                """, (search_terms, *params))
-                total += cursor.fetchone()['count']
-
-            if search_type in ["comments", "everything"]:
-                cursor.execute(f"""
-                    SELECT COUNT(*) as count
-                    FROM comments 
-                    WHERE search_vector @@ to_tsquery('english', %s) {date_filter}
-                """, (search_terms, *params))
-                total += cursor.fetchone()['count']
-
-        return total
-
+@st.cache_data(ttl=3600)
 def get_date_bounds():
-    """Get earliest and latest dates from both posts and comments"""
+    """Get the earliest and latest dates from the database"""
     conn = get_database_connection()
     with conn.cursor(cursor_factory=RealDictCursor) as cursor:
         cursor.execute("""
             SELECT 
                 MIN(created_utc) as min_date,
                 MAX(created_utc) as max_date
-            FROM (
-                SELECT created_utc FROM submissions
-                UNION ALL
-                SELECT created_utc FROM comments
-            ) dates
+            FROM submissions
         """)
         result = cursor.fetchone()
-        min_date = datetime.utcfromtimestamp(result['min_date'])
-        max_date = datetime.utcfromtimestamp(result['max_date'])
-        return min_date.date(), max_date.date()
-
-def get_sort_order(sort_by):
-    """Convert sort_by parameter to SQL ORDER BY clause"""
-    sort_orders = {
-        "most_upvotes": "score DESC",
-        "newest": "created_utc DESC",
-        "oldest": "created_utc ASC",
-        "most_comments": "num_comments DESC"
-    }
-    return sort_orders.get(sort_by, "score DESC")
-
-def search_reddit(query, search_type, exact_match, offset, limit, sort_by="newest", start_date=None, end_date=None):
-    """Search posts and comments based on query and filters"""
-    conn = get_database_connection()
-    with conn.cursor(cursor_factory=RealDictCursor) as cursor:
-        posts = []
-        comments = []
         
-        date_filter = ""
-        params = []
-        if start_date:
-            date_filter += " AND created_utc >= %s"
-            params.append(int(start_date.timestamp()))
-        if end_date:
-            date_filter += " AND created_utc <= %s"
-            params.append(int(end_date.timestamp()))
+        min_date = datetime.fromtimestamp(result['min_date']).date()
+        max_date = datetime.fromtimestamp(result['max_date']).date()
+        
+        return min_date, max_date
 
-        if search_type in ["post_title", "post_body", "everything"]:
-            if exact_match:
-                where_clause = {
-                    "post_title": "LOWER(title) LIKE LOWER(%s)",
-                    "post_body": "LOWER(selftext) LIKE LOWER(%s)",
-                    "everything": "LOWER(title || ' ' || selftext) LIKE LOWER(%s)"
-                }.get(search_type)
-                cursor.execute(f"""
-                    SELECT * FROM submissions 
-                    WHERE {where_clause} {date_filter}
-                    ORDER BY {get_sort_order(sort_by)}
-                    LIMIT %s OFFSET %s
-                """, (f"%{query}%", *params, limit, offset))
-            else:
-                search_terms = ' & '.join(query.split())
-                cursor.execute(f"""
-                    SELECT *, ts_rank(search_vector, to_tsquery('english', %s)) as rank 
-                    FROM submissions 
-                    WHERE search_vector @@ to_tsquery('english', %s) {date_filter}
-                    ORDER BY rank DESC, {get_sort_order(sort_by)}
-                    LIMIT %s OFFSET %s
-                """, (search_terms, search_terms, *params, limit, offset))
-            posts = cursor.fetchall()
+def format_date(timestamp):
+    """Format Unix timestamp to readable date"""
+    return datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
 
-        if search_type in ["comments", "everything"]:
-            if exact_match:
-                cursor.execute(f"""
-                    SELECT * FROM comments 
-                    WHERE LOWER(body) LIKE LOWER(%s) {date_filter}
-                    ORDER BY {get_sort_order(sort_by)}
-                    LIMIT %s OFFSET %s
-                """, (f"%{query}%", *params, limit, offset))
-            else:
-                search_terms = ' & '.join(query.split())
-                cursor.execute(f"""
-                    SELECT *, ts_rank(search_vector, to_tsquery('english', %s)) as rank 
-                    FROM comments 
-                    WHERE search_vector @@ to_tsquery('english', %s) {date_filter}
-                    ORDER BY rank DESC, {get_sort_order(sort_by)}
-                    LIMIT %s OFFSET %s
-                """, (search_terms, search_terms, *params, limit, offset))
-            comments = cursor.fetchall()
+def normalize_text(text):
+    """Normalize text for search"""
+    return re.sub(r'[^\w\s]', '', text.lower())
 
-        return posts, comments
-
-def fetch_posts(offset, limit, sort_by="newest"):
-    """Fetch posts with pagination"""
-    conn = get_database_connection()
-    try:
-        with conn.cursor(cursor_factory=RealDictCursor) as cursor:
-            # Rollback any failed transaction
-            conn.rollback()
-            
-            order_by = get_sort_order(sort_by)
-            cursor.execute(f"""
-                SELECT id, title, selftext, author, created_utc, score, num_comments, subreddit
-                FROM submissions
-                ORDER BY {order_by}
-                LIMIT %s OFFSET %s
-            """, (limit, offset))
-            return cursor.fetchall()
-    except Exception as e:
-        st.error(f"Error fetching posts: {type(e).__name__}")
-        st.error(str(e))
-        return []
-    finally:
-        try:
-            conn.commit()
-        except:
-            pass
-
-def fetch_comments_for_post(post_id, sort_by="newest"):
-    """Fetch comments for a specific post"""
-    conn = get_database_connection()
-    try:
-        with conn.cursor(cursor_factory=RealDictCursor) as cursor:
-            order_by = get_sort_order(sort_by)
-            cursor.execute(f"""
-                SELECT id, body, author, created_utc, score,
-                       submission_id, parent_id
-                FROM comments
-                WHERE submission_id = %s
-                ORDER BY {order_by}
-            """, (post_id,))
-            return cursor.fetchall()
-    except Exception as e:
-        st.error(f"Error fetching comments: {type(e).__name__}")
-        st.error(str(e))
-        return []
+def highlight_search_terms(text, search_terms):
+    """Highlight search terms in text"""
+    highlighted = text
+    for term in search_terms:
+        pattern = re.compile(f'({term})', re.IGNORECASE)
+        highlighted = pattern.sub(r'<span style="background-color: #FFD700; color: black;">\1</span>', highlighted)
+    return highlighted
 
 def display_comments(comments, search_terms=None):
     """Display comments in a threaded format"""
@@ -312,293 +128,269 @@ def display_comments(comments, search_terms=None):
             </div>""", 
             unsafe_allow_html=True
         )
+    @st.cache_resource(ttl=CACHE_TTL)
+def get_database_connection():
+    conn = psycopg2.connect(
+        dbname=st.secrets["postgres"]["dbname"],
+        user=st.secrets["postgres"]["user"],
+        password=st.secrets["postgres"]["password"],
+        host=st.secrets["postgres"]["host"],
+        port=st.secrets["postgres"]["port"],
+        connect_timeout=10
+    )
+    conn.set_session(autocommit=True)
+    return conn
 
-def get_post_url(link_id, comment_id):
-    post_id = link_id.split('_')[1] if '_' in link_id else link_id
-    return f"/Post_View?post_id={post_id}&comment_id={comment_id}"
-
-def clean_reddit_id(reddit_id, keep_prefix=False):
-    """Standardize Reddit ID format
-    Example: 't3_abc123' -> 'abc123' (keep_prefix=False)
-            't3_abc123' -> 't3_abc123' (keep_prefix=True)
-    """
-    if not reddit_id:
-        return None
-    if reddit_id.startswith(('t1_', 't3_')):
-        return reddit_id if keep_prefix else reddit_id.split('_')[1]
-    return reddit_id
-
-def add_prefix(id_str, type_prefix):
-    """Add Reddit type prefix if missing
-    Example: 'abc123' -> 't3_abc123' (type_prefix='t3')
-    """
-    if not id_str:
-        return None
-    if id_str.startswith(('t1_', 't3_')):
-        return id_str
-    return f"{type_prefix}_{id_str}"
-
-def validate_post_data(post):
-    """Ensure post data has all required fields"""
-    required_fields = ['id', 'title', 'selftext', 'author', 'created_utc', 
-                      'score', 'num_comments', 'subreddit']
-    return all(field in post for field in required_fields)
-
-def validate_comment_data(comment):
-    """Ensure comment data has all required fields"""
-    required_fields = ['id', 'body', 'author', 'created_utc', 
-                      'score', 'submission_id', 'parent_id']
-    return all(field in comment for field in required_fields)
-
-@st.cache_data(ttl=3600)
-def fetch_posts_cached(offset, limit, sort_by="newest"):
-    """Cached version of fetch_posts"""
+@st.cache_data(ttl=CACHE_TTL)
+def fetch_paginated_data(page_num, sort_by="newest", search_query=None):
+    """Fetch one page worth of data in a single query"""
+    offset = (page_num - 1) * POSTS_PER_PAGE
     conn = get_database_connection()
+    
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+            # Get total post count
+            cursor.execute("SELECT COUNT(*) FROM submissions")
+            total_posts = cursor.fetchone()['count']
+            
+            # Fetch posts with their comment counts
             order_by = get_sort_order(sort_by)
             cursor.execute(f"""
                 SELECT id, title, selftext, author, created_utc, score, num_comments
                 FROM submissions
                 ORDER BY {order_by}
                 LIMIT %s OFFSET %s
-            """, (limit, offset))
-            return cursor.fetchall()
+            """, (POSTS_PER_PAGE, offset))
+            
+            posts = cursor.fetchall()
+            
+            if not posts:
+                return [], {}, total_posts
+            
+            # Fetch comments for all posts in this page
+            post_ids = [post['id'] for post in posts]
+            cursor.execute("""
+                WITH ranked_comments AS (
+                    SELECT 
+                        id, body, author, created_utc, score, submission_id, parent_id,
+                        ROW_NUMBER() OVER (PARTITION BY submission_id ORDER BY score DESC) as row_num
+                    FROM comments
+                    WHERE submission_id = ANY(%s)
+                )
+                SELECT *
+                FROM ranked_comments
+                WHERE row_num <= %s
+            """, (post_ids, COMMENTS_PER_POST))
+            
+            # Organize comments by post
+            comments = cursor.fetchall()
+            post_comments = {post_id: [] for post_id in post_ids}
+            for comment in comments:
+                post_comments[comment['submission_id']].append(comment)
+            
+            return posts, post_comments, total_posts
+            
     except Exception as e:
-        st.error(f"Error fetching posts: {type(e).__name__}")
-        return []
+        st.error(f"Database error: {type(e).__name__}")
+        return [], {}, 0
 
-@st.cache_data(ttl=3600)
-def fetch_comments_cached(post_id, sort_by="newest"):
-    """Cached version of fetch_comments"""
+@st.cache_data(ttl=CACHE_TTL)
+def search_reddit_optimized(query, search_type, exact_match, page_num, sort_by, start_date=None, end_date=None):
+    """Optimized search function"""
+    offset = (page_num - 1) * POSTS_PER_PAGE
     conn = get_database_connection()
+    
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+            # Build search conditions
+            search_conditions = []
+            params = []
+            
+            if search_type == "title":
+                search_conditions.append("LOWER(title) LIKE LOWER(%s)")
+                params.append(f"%{query}%" if not exact_match else query)
+            elif search_type == "content":
+                search_conditions.append("LOWER(selftext) LIKE LOWER(%s)")
+                params.append(f"%{query}%" if not exact_match else query)
+            else:  # both
+                search_conditions.append("(LOWER(title) LIKE LOWER(%s) OR LOWER(selftext) LIKE LOWER(%s))")
+                params.extend([f"%{query}%" if not exact_match else query] * 2)
+            
+            # Add date range conditions if provided
+            if start_date:
+                search_conditions.append("created_utc >= %s")
+                params.append(int(start_date.timestamp()))
+            if end_date:
+                search_conditions.append("created_utc <= %s")
+                params.append(int(end_date.timestamp()))
+            
+            where_clause = " AND ".join(search_conditions)
             order_by = get_sort_order(sort_by)
-            cursor.execute(f"""
-                SELECT id, body, author, created_utc, score,
-                       submission_id, parent_id
-                FROM comments
-                WHERE submission_id = %s
+            
+            # Get total count for pagination
+            count_query = f"SELECT COUNT(*) FROM submissions WHERE {where_clause}"
+            cursor.execute(count_query, params)
+            total_results = cursor.fetchone()['count']
+            
+            # Fetch matching posts
+            query = f"""
+                SELECT id, title, selftext, author, created_utc, score, num_comments
+                FROM submissions
+                WHERE {where_clause}
                 ORDER BY {order_by}
-                LIMIT 100
-            """, (post_id,))
-            return cursor.fetchall()
+                LIMIT %s OFFSET %s
+            """
+            cursor.execute(query, params + [POSTS_PER_PAGE, offset])
+            posts = cursor.fetchall()
+            
+            if not posts:
+                return [], {}, total_results
+            
+            # Fetch comments for matching posts
+            post_ids = [post['id'] for post in posts]
+            cursor.execute("""
+                WITH ranked_comments AS (
+                    SELECT 
+                        id, body, author, created_utc, score, submission_id, parent_id,
+                        ROW_NUMBER() OVER (PARTITION BY submission_id ORDER BY score DESC) as row_num
+                    FROM comments
+                    WHERE submission_id = ANY(%s)
+                )
+                SELECT *
+                FROM ranked_comments
+                WHERE row_num <= %s
+            """, (post_ids, COMMENTS_PER_POST))
+            
+            comments = cursor.fetchall()
+            post_comments = {post_id: [] for post_id in post_ids}
+            for comment in comments:
+                post_comments[comment['submission_id']].append(comment)
+            
+            return posts, post_comments, total_results
+            
     except Exception as e:
-        st.error(f"Error fetching comments: {type(e).__name__}")
-        return []
-
-def fetch_page_data(offset, limit, sort_by="newest", comment_sort="newest"):
-    """Fetch all data needed for a page in one go"""
-    posts = fetch_posts_cached(offset, limit, sort_by)
-    
-    # Pre-fetch comments for all posts
-    post_comments = {}
-    for post in posts:
-        post_comments[post['id']] = fetch_comments_cached(post['id'], comment_sort)
-    
-    return posts, post_comments
-
-# Update the main title
+        st.error(f"Database error: {type(e).__name__}")
+        return [], {}, 0
+    # Main page layout
 st.title("RepLadies Reddit Archive")
 
-posts_per_page = 20
-page_num = st.session_state.get("page_num", 1)
-offset = (page_num - 1) * posts_per_page
-
 # Sidebar controls
-st.sidebar.subheader("Controls")
-
-# Search options
-search_query = st.sidebar.text_input("Enter search term")
-if search_query:
-    search_type = st.sidebar.radio(
-        "Search in:", 
-        ["post_title", "post_body", "comments", "everything"],
+with st.sidebar:
+    # Search controls
+    search_query = st.text_input("Enter search term", key="search")
+    
+    if search_query:
+        search_type = st.radio(
+            "Search in",
+            ["title", "content", "both"],
+            format_func=lambda x: x.capitalize(),
+            key="search_type"
+        )
+        
+        exact_match = st.checkbox("Exact match", key="exact_match")
+        highlight_enabled = st.checkbox("Highlight matches", value=True, key="highlight")
+    
+    # Sorting controls
+    sort_by = st.selectbox(
+        "Sort posts by",
+        ["most_upvotes", "most_comments", "newest", "oldest"],
         format_func=lambda x: {
-            "post_title": "Post Titles",
-            "post_body": "Post Body Text",
-            "comments": "Comments Only",
-            "everything": "Everything ℹ️"
+            "most_upvotes": "Most Upvotes",
+            "most_comments": "Most Comments",
+            "newest": "Newest",
+            "oldest": "Oldest"
         }[x],
-        help="When searching 'Everything', posts will be displayed first, followed by comments"
+        key="sort_posts"
     )
-    exact_match = st.sidebar.toggle("Exact match", value=False)
-    highlight_enabled = st.sidebar.toggle("Highlight search terms", value=True)
+    
+    comment_sort = st.selectbox(
+        "Sort comments by", 
+        ["most_upvotes", "newest", "oldest"],
+        format_func=lambda x: {
+            "most_upvotes": "Most Upvotes",
+            "newest": "Newest",
+            "oldest": "Oldest"
+        }[x],
+        key="comment_sort"
+    )
+    
+    # Date range picker for search
+    if search_query:
+        min_date, max_date = get_date_bounds()
+        
+        st.subheader("Date Range Filter")
+        start_date = st.date_input(
+            "Start Date",
+            value=min_date,
+            min_value=min_date,
+            max_value=max_date,
+            key="start_date"
+        )
+        end_date = st.date_input(
+            "End Date",
+            value=max_date,
+            min_value=min_date,
+            max_value=max_date,
+            key="end_date"
+        )
+        
+        start_datetime = datetime.combine(start_date, datetime.min.time())
+        end_datetime = datetime.combine(end_date, datetime.max.time())
 
-# Sort options
-sort_by = st.sidebar.selectbox(
-    "Sort posts by", 
-    ["most_upvotes", "newest", "oldest", "most_comments"],
-    format_func=lambda x: {
-        "most_upvotes": "Most Upvotes",
-        "newest": "Newest",
-        "oldest": "Oldest",
-        "most_comments": "Most Comments"
-    }[x],
-    index=0
-)
+# Pagination
+page_num = st.session_state.get('page_num', 1)
 
-comment_sort = st.sidebar.selectbox(
-    "Sort comments by", 
-    ["most_upvotes", "newest", "oldest"],
-    format_func=lambda x: {
-        "most_upvotes": "Most Upvotes",
-        "newest": "Newest",
-        "oldest": "Oldest"
-    }[x],
-    index=0,
-    key='comment_sort'
-)
-
-# Date range picker
+# Fetch data
 if search_query:
-    min_date, max_date = get_date_bounds()
-    
-    st.sidebar.subheader("Date Range Filter")
-    start_date = st.sidebar.date_input(
-        "Start Date",
-        value=min_date,
-        min_value=min_date,
-        max_value=max_date,
-        key="start_date"
-    )
-    end_date = st.sidebar.date_input(
-        "End Date",
-        value=max_date,
-        min_value=min_date,
-        max_value=max_date,
-        key="end_date"
-    )
-    
-    start_datetime = datetime.combine(start_date, datetime.min.time())
-    end_datetime = datetime.combine(end_date, datetime.max.time())
-
-# Search or fetch posts
-if search_query:
-    normalized_query = normalize_text(search_query)
-    search_terms = normalized_query.split() if highlight_enabled else []
-    
-    start_timestamp = int(start_datetime.timestamp()) if 'start_datetime' in locals() else None
-    end_timestamp = int(end_datetime.timestamp()) if 'end_datetime' in locals() else None
-    
-    st.write("Debug Block 4: About to fetch posts (search)")
-    st.write(f"Debug Info: offset={offset}, posts_per_page={posts_per_page}, sort_by={sort_by}")
-    
-    posts, comments = search_reddit(
-        search_query, 
-        search_type, 
-        exact_match, 
-        offset, 
-        posts_per_page, 
+    posts, post_comments, total_results = search_reddit_optimized(
+        search_query,
+        search_type,
+        exact_match,
+        page_num,
         sort_by,
         start_datetime if 'start_datetime' in locals() else None,
         end_datetime if 'end_datetime' in locals() else None
     )
-    st.write(f"Debug Block 5: Posts fetched. Number of posts: {len(posts) if posts else 0}")
+    search_terms = normalize_text(search_query).split() if highlight_enabled else []
 else:
+    posts, post_comments, total_results = fetch_paginated_data(page_num, sort_by)
     search_terms = []
-    st.write("Debug Block 4: About to fetch posts (no search)")
-    st.write(f"Debug Info: offset={offset}, posts_per_page={posts_per_page}, sort_by={sort_by}")
-    
-    posts = fetch_posts(offset, posts_per_page, sort_by)
-    st.write(f"Debug Block 5: Posts fetched. Number of posts: {len(posts) if posts else 0}")
-    comments = []
-    conn = get_database_connection()
-    with conn.cursor(cursor_factory=RealDictCursor) as cursor:
-        cursor.execute("SELECT COUNT(*) FROM submissions")
-        total_results = cursor.fetchone()['count']
 
 # Calculate pagination
-total_pages = (total_results - 1) // posts_per_page + 1
-page_num = min(page_num, total_pages)
+total_pages = (total_results - 1) // POSTS_PER_PAGE + 1
 
 # Display results
 if total_results == 0:
-    st.write("Debug Block 6: No results to display")
     st.markdown("<h2 style='text-align: center; color: red; font-weight: bold;'>No results found</h2>", unsafe_allow_html=True)
 else:
-    st.write("Debug Block 6: About to display posts")
     st.write(f"Page {page_num} of {total_pages}")
     
-    if search_query:
-        if posts:
-            st.subheader("Posts:")
-            for post in posts:
-                title = post['title'].replace("<", "&lt;").replace(">", "&gt;")
-                selftext = post['selftext'].replace("<", "&lt;").replace(">", "&gt;")
-                
-                if highlight_enabled:
-                    title = highlight_search_terms(title, search_terms)
-                    selftext = highlight_search_terms(selftext, search_terms)
-
-                st.markdown(f"<h3>{title}</h3>", unsafe_allow_html=True)
-                st.markdown(selftext, unsafe_allow_html=True)
-                st.write(f"Score: {post['score']} | Comments: {post['num_comments']}")
-                st.markdown(
-                    f'Posted by <a href="/Profile_View?username={post["author"]}">u/{post["author"]}</a> on {format_date(post["created_utc"])} in r/{post["subreddit"]}',
-                    unsafe_allow_html=True
-                )
-
-                with st.expander("View Comments"):
-                    post_comments = fetch_comments_for_post(post['id'], comment_sort)
-                    display_comments(post_comments, search_terms if highlight_enabled else None)
-                st.markdown("---")
-
-        if comments and search_type in ["comments", "everything"]:
-            st.subheader("Search Results in Comments:")
-            for comment in comments:
-                body = comment['body']
-                if highlight_enabled:
-                    body = highlight_search_terms(body, search_terms)
-                
-                has_valid_post = False
-                if comment['submission_id']:
-                    post_id = comment['submission_id'].split('_')[1]
-                    conn = get_database_connection()
-                    with conn.cursor(cursor_factory=RealDictCursor) as cursor:
-                        cursor.execute("SELECT id FROM submissions WHERE id = %s", (post_id,))
-                        has_valid_post = cursor.fetchone() is not None
-
-                st.markdown(
-                    f"""<div style='padding: 8px; border-left: 2px solid #ccc;'>
-                        <strong><a href="/Profile_View?username={comment['author']}">u/{comment['author']}</a></strong> - 
-                        <i>Score: {comment['score']} | Posted on: {format_date(comment['created_utc'])} in r/{comment['subreddit']}</i><br>
-                        <p>{body}</p>
-                        {f'<a href="{get_post_url(comment["submission_id"], comment["id"])}" target="_blank">View Full Post and Comments</a>' if has_valid_post else ''}
-                    </div>""", 
-                    unsafe_allow_html=True
-                )
-                st.markdown("---")
-
-    else:
-        for post in posts:
+    for post in posts:
+        with st.container():
             st.subheader(post['title'])
             st.write(post['selftext'])
             st.write(f"Score: {post['score']} | Comments: {post['num_comments']}")
             st.markdown(
-                f'Posted by <a href="/Profile_View?username={post["author"]}">u/{post["author"]}</a> on {format_date(post["created_utc"])} in r/{post["subreddit"]}',
+                f'Posted by <a href="/Profile_View?username={post["author"]}">u/{post["author"]}</a> on {format_date(post["created_utc"])}',
                 unsafe_allow_html=True
             )
 
             with st.expander("View Comments"):
-                post_comments = fetch_comments_for_post(post['id'], comment_sort)
-                display_comments(post_comments, search_terms)
+                if post['id'] in post_comments:
+                    display_comments(post_comments[post['id']], search_terms)
             st.markdown("---")
 
-    if page_num == total_pages:
-        st.write("Debug Block 7: Finished displaying posts")
-        st.markdown("<h2 style='text-align: center; color: red; font-weight: bold;'>You have reached the end of the results.</h2>", unsafe_allow_html=True)
-
-    # Pagination controls
-    st.sidebar.write(f"Page {page_num} of {total_pages}")
-    
-    if page_num < total_pages:
-        if st.sidebar.button("Next page"):
-            st.session_state.page_num = page_num + 1
-            st.experimental_rerun()
-
+# Pagination controls
+col1, col2, col3 = st.columns([1, 2, 1])
+with col1:
     if page_num > 1:
-        if st.sidebar.button("Previous page"):
+        if st.button("← Previous"):
             st.session_state.page_num = page_num - 1
+            st.experimental_rerun()
+with col2:
+    st.write(f"Page {page_num} of {total_pages}")
+with col3:
+    if page_num < total_pages:
+        if st.button("Next →"):
+            st.session_state.page_num = page_num + 1
             st.experimental_rerun()
