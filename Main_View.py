@@ -5,6 +5,7 @@ from datetime import datetime
 import re
 import os
 import time
+from functools import lru_cache
 
 # Must be the first Streamlit command
 st.set_page_config(
@@ -58,9 +59,8 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-@st.cache_resource(show_spinner=False)
+@st.cache_resource(ttl=3600)
 def get_database_connection():
-    st.write("Debug Block 2: Attempting Database Connection")
     conn = psycopg2.connect(
         dbname=st.secrets["postgres"]["dbname"],
         user=st.secrets["postgres"]["user"],
@@ -69,9 +69,7 @@ def get_database_connection():
         port=st.secrets["postgres"]["port"],
         connect_timeout=10
     )
-    # Set autocommit mode
     conn.set_session(autocommit=True)
-    st.write("Debug Block 3: Database Connected Successfully")
     return conn
 
 # Helper function to convert UTC timestamp to a readable date
@@ -351,6 +349,55 @@ def validate_comment_data(comment):
     required_fields = ['id', 'body', 'author', 'created_utc', 
                       'score', 'submission_id', 'parent_id']
     return all(field in comment for field in required_fields)
+
+@st.cache_data(ttl=3600)
+def fetch_posts_cached(offset, limit, sort_by="newest"):
+    """Cached version of fetch_posts"""
+    conn = get_database_connection()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+            order_by = get_sort_order(sort_by)
+            cursor.execute(f"""
+                SELECT id, title, selftext, author, created_utc, score, num_comments
+                FROM submissions
+                ORDER BY {order_by}
+                LIMIT %s OFFSET %s
+            """, (limit, offset))
+            return cursor.fetchall()
+    except Exception as e:
+        st.error(f"Error fetching posts: {type(e).__name__}")
+        return []
+
+@st.cache_data(ttl=3600)
+def fetch_comments_cached(post_id, sort_by="newest"):
+    """Cached version of fetch_comments"""
+    conn = get_database_connection()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+            order_by = get_sort_order(sort_by)
+            cursor.execute(f"""
+                SELECT id, body, author, created_utc, score,
+                       submission_id, parent_id
+                FROM comments
+                WHERE submission_id = %s
+                ORDER BY {order_by}
+                LIMIT 100
+            """, (post_id,))
+            return cursor.fetchall()
+    except Exception as e:
+        st.error(f"Error fetching comments: {type(e).__name__}")
+        return []
+
+def fetch_page_data(offset, limit, sort_by="newest", comment_sort="newest"):
+    """Fetch all data needed for a page in one go"""
+    posts = fetch_posts_cached(offset, limit, sort_by)
+    
+    # Pre-fetch comments for all posts
+    post_comments = {}
+    for post in posts:
+        post_comments[post['id']] = fetch_comments_cached(post['id'], comment_sort)
+    
+    return posts, post_comments
 
 # Update the main title
 st.title("RepLadies Reddit Archive")
