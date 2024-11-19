@@ -128,7 +128,8 @@ def display_comments(comments, search_terms=None):
             </div>""", 
             unsafe_allow_html=True
         )
-    @st.cache_resource(ttl=CACHE_TTL)
+
+@st.cache_resource(ttl=CACHE_TTL)
 def get_database_connection():
     conn = psycopg2.connect(
         dbname=st.secrets["postgres"]["dbname"],
