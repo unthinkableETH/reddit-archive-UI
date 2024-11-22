@@ -54,11 +54,15 @@ def display_nested_comments(comments, highlight_comment_id=None):
         reply_count = len(replies)
         reply_text = f"({reply_count} {'reply' if reply_count == 1 else 'replies'})" if reply_count > 0 else ""
         
+        # Set initial button state and display style based on level
+        initial_button = "[-]" if level == 0 else "[+]"
+        initial_display = "block" if level == 0 else "none"
+        
         return f"""
             <div class="comment" data-level="{level}">
                 <div class="comment-header">
                     <button class="collapse-btn" onclick="toggleComment('{comment['id']}')">
-                        [-] {reply_text}
+                        {initial_button} {reply_text}
                     </button>
                     <strong>u/{comment['author']}</strong> - 
                     <span class="level-label">{level_label}</span><br>
@@ -66,7 +70,7 @@ def display_nested_comments(comments, highlight_comment_id=None):
                 </div>
                 <div id="content-{comment['id']}" class="comment-content">
                     <div class="comment-body">{comment['body']}</div>
-                    <div class="replies" id="replies-{comment['id']}">
+                    <div class="replies" id="replies-{comment['id']}" style="display: {initial_display};">
                         {''.join(build_comment_html(reply_id, level + 1) for reply_id in replies)}
                     </div>
                 </div>
@@ -131,6 +135,20 @@ def display_nested_comments(comments, highlight_comment_id=None):
                     btn.textContent = btn.textContent.replace('[-]', '[+]');
                 }}
             }}
+
+            // Initialize all comments on load
+            document.addEventListener('DOMContentLoaded', function() {{
+                const comments = document.querySelectorAll('.comment');
+                comments.forEach(comment => {{
+                    const level = parseInt(comment.getAttribute('data-level'));
+                    if (level > 0) {{
+                        const replies = comment.querySelector('.replies');
+                        if (replies) {{
+                            replies.style.display = 'none';
+                        }}
+                    }}
+                }});
+            }});
         </script>
         <div class="comments-container">
             {comments_html}
