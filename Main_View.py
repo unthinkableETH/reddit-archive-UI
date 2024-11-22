@@ -13,7 +13,7 @@ st.markdown(DARK_THEME_CSS, unsafe_allow_html=True)
 
 st.title("RepLadies Reddit Archive")
 
-# Navigation using containers instead of cards
+# Navigation using containers
 col1, col2, col3 = st.columns(3)
 
 with col1:
