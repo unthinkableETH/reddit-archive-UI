@@ -92,7 +92,6 @@ def display_nested_comments(comments, highlight_comment_id=None):
         <style>
             .comment {{
                 margin: 10px 0;
-                padding: 8px;
                 border-left: 2px solid #666;
             }}
             .comment[data-level="0"] {{ margin-left: 0px; }}
@@ -101,7 +100,7 @@ def display_nested_comments(comments, highlight_comment_id=None):
             .comment[data-level="3"] {{ margin-left: 60px; }}
             .comment[data-level="4"] {{ margin-left: 80px; }}
             .comment-header {{
-                margin-bottom: 8px;
+                padding: 8px 8px 0 8px;
                 color: #FAFAFA;
             }}
             .collapse-btn {{
@@ -109,7 +108,7 @@ def display_nested_comments(comments, highlight_comment_id=None):
                 border: 1px solid #666;
                 color: #FAFAFA;
                 padding: 2px 8px;
-                margin: 8px 0;
+                margin: 8px 8px 8px 8px;
                 cursor: pointer;
                 border-radius: 3px;
                 display: block;
@@ -127,12 +126,12 @@ def display_nested_comments(comments, highlight_comment_id=None):
             }}
             .comment-body {{
                 color: #FAFAFA;
-                margin: 8px 0;
+                margin: 8px;
                 white-space: pre-wrap;
-                padding-left: 0;  /* Remove left padding */
+                padding: 0;
             }}
             .replies {{
-                margin-left: 20px;  /* Add margin to replies container instead */
+                margin-left: 0;  /* Remove margin from replies */
             }}
         </style>
         <script>
