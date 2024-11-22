@@ -17,15 +17,7 @@ post_id = params.get("post_id")
 highlight_comment_id = params.get("comment_id")
 
 if not post_id:
-    st.title("Post View")
     st.error("No post ID provided in the URL.")
-    st.markdown("""
-    ### How to Access Post View
-    This page shows detailed views of posts and their comments. To view a post:
-
-    1. Use the [Search page](/Search_View) to find posts
-    2. Click on any post title or "View Discussion" button
-    """)
     st.stop()
 
 # Sidebar controls
@@ -65,6 +57,9 @@ try:
     )
     st.divider()
     
+    # Initialize seen_comments set
+    seen_comments = set()
+    
     # Fetch comments
     comments = execute_query(
         GET_COMMENTS_FOR_POST.format(sort_order=SORT_ORDERS[comment_sort]), 
@@ -78,7 +73,6 @@ try:
         # If there's a highlighted comment and bring_to_top is enabled
         if highlight_comment_id and highlight_comment and bring_to_top:
             highlighted_chain = []
-            seen_comments = set()
             
             # Get the comment chain
             current_comment = comment_dict.get(highlight_comment_id)
