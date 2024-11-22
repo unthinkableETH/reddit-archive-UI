@@ -152,13 +152,15 @@ def display_nested_comments(comments, highlight_comment_id=None):
                 replies.style.display = isExpanded ? 'none' : 'block';
                 
                 // Extract the number of replies from the button text
-                const match = btn.textContent.match(/(\d+)/);
+                const match = btn.textContent.match(/\\d+/);
                 if (match) {{
-                    const count = match[1];
+                    const count = match[0];
                     const replyWord = count === '1' ? 'reply' : 'replies';
-                    btn.textContent = isExpanded ? 
-                        `[+] View ${count} ${replyWord}` : 
-                        `[-] Hide ${count} ${replyWord}`;
+                    if (isExpanded) {{
+                        btn.textContent = '[+] View ' + count + ' ' + replyWord;
+                    }} else {{
+                        btn.textContent = '[-] Hide ' + count + ' ' + replyWord;
+                    }}
                 }}
             }}
         </script>
