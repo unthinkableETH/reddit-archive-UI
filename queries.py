@@ -28,14 +28,14 @@ SORT_ORDERS: SortOrders = {
 
 # Main post queries
 GET_POSTS = """
-    SELECT id, author, title, selftext, created_utc, num_comments, score, subreddit
+    SELECT id, author, title, selftext, created_utc, num_comments, score
     FROM submissions
     ORDER BY {sort_order}
     LIMIT %s OFFSET %s
 """
 
 GET_POST_BY_ID = """
-    SELECT title, selftext, author, created_utc, id, score, num_comments, subreddit
+    SELECT title, selftext, author, created_utc, id, score, num_comments
     FROM submissions 
     WHERE id = %s
 """
@@ -50,7 +50,7 @@ GET_COMMENTS_FOR_POST = """
 
 # Search queries
 SEARCH_POSTS = """
-    SELECT id, author, title, selftext, created_utc, num_comments, score, subreddit
+    SELECT id, author, title, selftext, created_utc, num_comments, score
     FROM submissions 
     WHERE to_tsvector('english', title || ' ' || COALESCE(selftext, '')) @@ plainto_tsquery('english', %s)
     {date_filter}
@@ -59,7 +59,7 @@ SEARCH_POSTS = """
 """
 
 SEARCH_POSTS_EXACT = """
-    SELECT title, selftext, author, created_utc, id, score, num_comments, subreddit
+    SELECT title, selftext, author, created_utc, id, score, num_comments
     FROM submissions 
     WHERE LOWER(title || ' ' || selftext) LIKE '%%' || LOWER(%s) || '%%'
     {date_filter}
@@ -68,7 +68,7 @@ SEARCH_POSTS_EXACT = """
 """
 
 SEARCH_COMMENTS = """
-    SELECT id, submission_id, author, body, created_utc, score, subreddit
+    SELECT id, submission_id, author, body, created_utc, score
     FROM comments 
     WHERE to_tsvector('english', body) @@ plainto_tsquery('english', %s)
     {date_filter}
@@ -105,14 +105,14 @@ GET_DATE_BOUNDS = """
 
 # Add these missing queries for profile view
 GET_USER_POSTS = """
-    SELECT title, selftext, created_utc, id, score, num_comments, subreddit
+    SELECT title, selftext, created_utc, id, score, num_comments
     FROM submissions 
     WHERE author = %s
     ORDER BY {sort_order}
 """
 
 GET_USER_COMMENTS = """
-    SELECT id, submission_id, parent_id, body, created_utc, score, subreddit
+    SELECT id, submission_id, parent_id, body, created_utc, score
     FROM comments 
     WHERE author = %s
     ORDER BY {sort_order}
