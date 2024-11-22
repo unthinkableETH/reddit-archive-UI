@@ -13,29 +13,26 @@ st.markdown(DARK_THEME_CSS, unsafe_allow_html=True)
 
 st.title("RepLadies Reddit Archive")
 
-# Navigation Cards
+# Navigation using containers instead of cards
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    st.card(
-        title="🔍 Search Archive",
-        text="Search through posts and comments",
-        url="/Search_View"
-    )
+    with st.container():
+        st.markdown("### 🔍 Search Archive")
+        st.write("Search through posts and comments")
+        st.link_button("Go to Search", "/Search_View")
 
 with col2:
-    st.card(
-        title="👤 User Profiles",
-        text="View user activity and history",
-        url="/Profile_View"
-    )
+    with st.container():
+        st.markdown("### 👤 User Profiles")
+        st.write("View user activity and history")
+        st.link_button("Go to Profiles", "/Profile_View")
 
 with col3:
-    st.card(
-        title="📊 Statistics",
-        text="View archive statistics",
-        url="/Stats_View"  # If you want to add this later
-    )
+    with st.container():
+        st.markdown("### 📊 Statistics")
+        st.write("View archive statistics")
+        st.link_button("Go to Stats", "/Stats_View")
 
 # Popular posts section
 st.header("Popular Posts")
