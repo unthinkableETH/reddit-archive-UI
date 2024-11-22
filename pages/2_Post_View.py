@@ -13,90 +13,130 @@ st.set_page_config(
 st.markdown(DARK_THEME_CSS, unsafe_allow_html=True)
 
 def display_nested_comments(comments, highlight_comment_id=None):
-    """Display comments in a nested tree structure using Bootstrap collapse"""
+    """Display comments in a nested tree structure"""
     
-    # First, inject Bootstrap CSS and JS
-    components.html("""
-        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-        <style>
-            .comment { margin-bottom: 10px; }
-            .comment-header { color: #666; }
-            .highlighted { color: red; }
-        </style>
-    """, height=0)
-    
-    def generate_comment_html(comment_id, comment, level=0, is_highlighted=False):
-        margin = level * 20
-        level_label = {
-            0: "Reply to Original Post (Level 1)",
-            1: "Reply (Level 2)",
-            2: "Reply to Reply (Level 3)",
-        }.get(level, f"Level {level + 1} Reply")
-        
-        return f"""
-            <div class="comment" style="margin-left: {margin}px">
-                <div class="comment-header">
-                    <strong>u/{comment['author']}</strong> - {level_label}<br>
-                    <small>Score: {comment['score']} | Posted on: {format_date(comment['created_utc'])}</small>
-                </div>
-                <div class="{'highlighted' if is_highlighted else ''}">
-                    {comment['body']}
-                </div>
-            </div>
-        """
-    
-    # Build the comment tree
+    # Create HTML for comments
+    comments_html = ""
     comment_dict = {}
     top_level_comments = []
     
-    # Create comment dictionary and identify top-level comments
+    # Build comment dictionary
     for comment in comments:
         comment_dict[comment['id']] = {
             'data': comment,
             'replies': [],
             'level': 0
         }
-        if comment['parent_id'] == post_id:
+    
+    # Build hierarchy
+    for comment in comments:
+        parent_id = comment['parent_id']
+        if parent_id == post_id:
             top_level_comments.append(comment['id'])
         else:
-            if comment['parent_id'] in comment_dict:
-                comment_dict[comment['parent_id']]['replies'].append(comment['id'])
-                comment_dict[comment['id']]['level'] = comment_dict[comment['parent_id']]['level'] + 1
-    
-    # Generate HTML for all comments
-    all_comments_html = ""
-    for comment_id in top_level_comments:
-        def build_comment_tree(cid, level=0):
-            if cid not in comment_dict:
-                return ""
-            
-            comment = comment_dict[cid]['data']
-            replies = comment_dict[cid]['replies']
-            
-            html = generate_comment_html(
-                cid, 
-                comment, 
-                level, 
-                cid == highlight_comment_id
-            )
-            
-            if replies:
-                for reply_id in replies:
-                    html += build_comment_tree(reply_id, level + 1)
-            
-            return html
+            if parent_id in comment_dict:
+                comment_dict[parent_id]['replies'].append(comment['id'])
+                comment_dict[comment['id']]['level'] = comment_dict[parent_id]['level'] + 1
+
+    def build_comment_html(comment_id, level=0):
+        if comment_id not in comment_dict:
+            return ""
         
-        all_comments_html += build_comment_tree(comment_id)
-    
-    # Render all comments
+        comment = comment_dict[comment_id]['data']
+        replies = comment_dict[comment_id]['replies']
+        
+        level_label = {
+            0: "Reply to Original Post (Level 1)",
+            1: "Reply (Level 2)",
+            2: "Reply to Reply (Level 3)",
+        }.get(level, f"Level {level + 1} Reply")
+        
+        reply_count = len(replies)
+        reply_text = f"({reply_count} {'reply' if reply_count == 1 else 'replies'})" if reply_count > 0 else ""
+        
+        return f"""
+            <div class="comment" data-level="{level}">
+                <div class="comment-header">
+                    <button class="collapse-btn" onclick="toggleComment('{comment['id']}')">
+                        [-] {reply_text}
+                    </button>
+                    <strong>u/{comment['author']}</strong> - 
+                    <span class="level-label">{level_label}</span><br>
+                    <span class="metadata">Score: {comment['score']} | Posted on: {format_date(comment['created_utc'])}</span>
+                </div>
+                <div id="content-{comment['id']}" class="comment-content">
+                    <div class="comment-body">{comment['body']}</div>
+                    <div class="replies" id="replies-{comment['id']}">
+                        {''.join(build_comment_html(reply_id, level + 1) for reply_id in replies)}
+                    </div>
+                </div>
+            </div>
+        """
+
+    for comment_id in top_level_comments:
+        comments_html += build_comment_html(comment_id)
+
+    # Render using components.html
     components.html(
         f"""
+        <style>
+            .comment {{
+                margin: 10px 0;
+                padding: 8px;
+                border-left: 2px solid #666;
+            }}
+            .comment[data-level="0"] {{ margin-left: 0px; }}
+            .comment[data-level="1"] {{ margin-left: 20px; }}
+            .comment[data-level="2"] {{ margin-left: 40px; }}
+            .comment[data-level="3"] {{ margin-left: 60px; }}
+            .comment[data-level="4"] {{ margin-left: 80px; }}
+            .comment-header {{
+                margin-bottom: 8px;
+                color: #FAFAFA;
+            }}
+            .collapse-btn {{
+                background: transparent;
+                border: 1px solid #666;
+                color: #FAFAFA;
+                padding: 0 5px;
+                margin-right: 8px;
+                cursor: pointer;
+            }}
+            .collapse-btn:hover {{
+                background: #666;
+            }}
+            .level-label {{
+                color: #888;
+                font-size: 0.9em;
+            }}
+            .metadata {{
+                color: #888;
+                font-size: 0.9em;
+            }}
+            .comment-body {{
+                color: #FAFAFA;
+                margin: 8px 0;
+                white-space: pre-wrap;
+            }}
+        </style>
+        <script>
+            function toggleComment(id) {{
+                const content = document.getElementById('replies-' + id);
+                const btn = event.target;
+                if (content.style.display === 'none') {{
+                    content.style.display = 'block';
+                    btn.textContent = btn.textContent.replace('[+]', '[-]');
+                }} else {{
+                    content.style.display = 'none';
+                    btn.textContent = btn.textContent.replace('[-]', '[+]');
+                }}
+            }}
+        </script>
         <div class="comments-container">
-            {all_comments_html}
+            {comments_html}
         </div>
         """,
-        height=800,  # Adjust this value based on your needs
+        height=800,
         scrolling=True
     )
 
