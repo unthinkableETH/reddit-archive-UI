@@ -73,9 +73,7 @@ def display_nested_comments(comments, highlight_comment_id=None):
                     <span class="level-label">{level_label}</span><br>
                     <span class="metadata">Score: {comment['score']} | Posted on: {format_date(comment['created_utc'])}</span>
                 </div>
-                <div class="comment-body">
-                    {comment['body']}
-                </div>
+                <p class="comment-body">{comment['body']}</p>
                 {expand_button}
                 <div class="replies" id="replies-{comment['id']}" style="display: none;">
                     {''.join(build_comment_html(reply_id, level + 1) for reply_id in valid_replies)}
@@ -93,14 +91,15 @@ def display_nested_comments(comments, highlight_comment_id=None):
             .comment {{
                 margin: 10px 0;
                 border-left: 2px solid #666;
+                padding-left: 8px;
             }}
-            .comment[data-level="0"] {{ margin-left: 0px; }}
+            .comment[data-level="0"] {{ margin-left: 0; }}
             .comment[data-level="1"] {{ margin-left: 20px; }}
             .comment[data-level="2"] {{ margin-left: 40px; }}
             .comment[data-level="3"] {{ margin-left: 60px; }}
             .comment[data-level="4"] {{ margin-left: 80px; }}
             .comment-header {{
-                padding: 8px 8px 0 8px;
+                margin: 8px 0;
                 color: #FAFAFA;
             }}
             .collapse-btn {{
@@ -108,7 +107,7 @@ def display_nested_comments(comments, highlight_comment_id=None):
                 border: 1px solid #666;
                 color: #FAFAFA;
                 padding: 2px 8px;
-                margin: 8px 8px 8px 8px;
+                margin: 8px 0;
                 cursor: pointer;
                 border-radius: 3px;
                 display: block;
@@ -126,12 +125,10 @@ def display_nested_comments(comments, highlight_comment_id=None):
             }}
             .comment-body {{
                 color: #FAFAFA;
-                margin: 8px;
+                margin: 8px 0;
                 white-space: pre-wrap;
+                text-indent: 0;
                 padding: 0;
-            }}
-            .replies {{
-                margin-left: 0;  /* Remove margin from replies */
             }}
         </style>
         <script>
