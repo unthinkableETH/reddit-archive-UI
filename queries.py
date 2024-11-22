@@ -44,7 +44,7 @@ GET_POST_BY_ID = """
 GET_COMMENTS_FOR_POST = """
     SELECT id, parent_id, body, author, created_utc, score
     FROM comments 
-    WHERE link_id = %s 
+    WHERE submission_id = %s 
     ORDER BY {sort_order}
 """
 
