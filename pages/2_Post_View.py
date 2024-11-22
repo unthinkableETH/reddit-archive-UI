@@ -262,9 +262,16 @@ try:
             # Display highlighted chain
             if highlighted_chain:
                 st.header("Highlighted Comment Thread")
-                for comment in highlighted_chain:
+                for i, comment in enumerate(highlighted_chain):
                     is_highlighted = comment['id'] == highlight_comment_id
                     style = "background-color: rgba(255, 0, 0, 0.1);" if is_highlighted else ""
+                    
+                    # Determine level label
+                    level = i  # Index in the chain represents the level
+                    level_label = {
+                        0: "Reply to Original Post (Level 1)",
+                        1: "Reply to Original Comment (Level 2)",
+                    }.get(level, f"Level {level + 1} Reply")
                     
                     # Pre-process the comment body
                     body = comment['body']
@@ -281,6 +288,7 @@ try:
                     st.markdown(
                         f"""<div style='padding: 8px; border-left: 2px solid #ccc;'>
                             <strong>u/{comment['author']}</strong> - 
+                            <span class="level-label">{level_label}</span><br>
                             <i>Score: {comment['score']} | Posted on: {format_date(comment['created_utc'])}</i>
                             <div style="{style}">{body}</div>
                         </div>""",
