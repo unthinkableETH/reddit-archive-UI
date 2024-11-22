@@ -52,10 +52,10 @@ def display_nested_comments(comments, highlight_comment_id=None):
         }.get(level, f"Level {level + 1} Reply")
         
         reply_count = len(replies)
-        reply_text = f"View {reply_count} {'reply' if reply_count == 1 else 'replies'}" if reply_count > 0 else ""
+        reply_text = f"{reply_count} {'reply' if reply_count == 1 else 'replies'}" if reply_count > 0 else ""
         expand_button = f"""
-            <button class="collapse-btn" onclick="toggleComment('{comment['id']}', {reply_count})">
-                [+] {reply_text}
+            <button class="collapse-btn" onclick="toggleComment(this, '{comment['id']}')">
+                [+] View {reply_text}
             </button>
         """ if reply_count > 0 else ""
         
@@ -145,18 +145,20 @@ def display_nested_comments(comments, highlight_comment_id=None):
             }}
         </style>
         <script>
-            function toggleComment(id, replyCount) {{
+            function toggleComment(btn, id) {{
                 const replies = document.getElementById('replies-' + id);
-                const btn = event.target;
                 const isExpanded = replies.style.display === 'block';
                 
                 replies.style.display = isExpanded ? 'none' : 'block';
                 
-                const replyWord = replyCount === 1 ? 'reply' : 'replies';
-                if (isExpanded) {{
-                    btn.textContent = `[+] View ${replyCount} ${replyWord}`;
-                }} else {{
-                    btn.textContent = `[-] Hide ${replyCount} ${replyWord}`;
+                // Extract the number of replies from the button text
+                const match = btn.textContent.match(/(\d+)/);
+                if (match) {{
+                    const count = match[1];
+                    const replyWord = count === '1' ? 'reply' : 'replies';
+                    btn.textContent = isExpanded ? 
+                        `[+] View ${count} ${replyWord}` : 
+                        `[-] Hide ${count} ${replyWord}`;
                 }}
             }}
         </script>
