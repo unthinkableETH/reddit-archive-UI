@@ -32,67 +32,6 @@ with st.sidebar:
             "oldest": "Oldest"
         }[x]
     )
-    
-    bring_to_top = st.toggle("Bring highlighted comment to top", value=True)
-    highlight_comment = st.toggle("Highlight search result comment", value=True)
-
-def display_nested_comments(comments, highlight_comment_id=None):
-    """Display comments in a nested tree structure"""
-    comment_dict = {}
-    top_level_comments = []
-    
-    # First pass: create dictionary of all comments
-    for comment in comments:
-        comment_dict[comment['id']] = {
-            'data': comment,
-            'replies': [],
-            'level': 0
-        }
-    
-    # Second pass: build the hierarchy
-    for comment in comments:
-        parent_id = comment['parent_id']
-        if parent_id.startswith('t3_'):  # Top-level comment
-            top_level_comments.append(comment['id'])
-        elif parent_id.startswith('t1_'):  # Reply to another comment
-            parent_id = parent_id[3:]  # Remove 't1_' prefix
-            if parent_id in comment_dict:
-                comment_dict[parent_id]['replies'].append(comment['id'])
-                comment_dict[comment['id']]['level'] = comment_dict[parent_id]['level'] + 1
-    
-    # Function to recursively display comments
-    def display_comment_tree(comment_id, level=0):
-        if comment_id not in comment_dict:
-            return
-            
-        comment = comment_dict[comment_id]['data']
-        replies = comment_dict[comment_id]['replies']
-        
-        # Calculate indentation
-        left_margin = min(level * 20, 200)  # Max indent of 200px
-        
-        # Check if this is the highlighted comment
-        is_highlighted = comment['id'] == highlight_comment_id
-        highlight_style = "color: red;" if is_highlighted else ""
-        
-        st.markdown(
-            f"""
-            <div style='margin-left: {left_margin}px; padding: 8px; border-left: 2px solid #ccc;'>
-                <strong>u/{comment['author']}</strong> - 
-                <i>Score: {comment['score']} | Posted on: {format_date(comment['created_utc'])}</i>
-                <p style="{highlight_style}">{comment['body']}</p>
-            </div>
-            """, 
-            unsafe_allow_html=True
-        )
-        
-        # Display replies
-        for reply_id in replies:
-            display_comment_tree(reply_id, level + 1)
-    
-    # Display all top-level comments and their replies
-    for comment_id in top_level_comments:
-        display_comment_tree(comment_id)
 
 try:
     # Fetch post
@@ -102,7 +41,7 @@ try:
         st.error("Post not found")
         st.stop()
         
-    post = post[0]  # Get first result
+    post = post[0]
     
     # Display post
     st.title(post['title'])
@@ -121,9 +60,21 @@ try:
         (post_id,)
     )
     
+    # Debug: Print first comment structure
     if comments:
+        st.write("Debug - First comment structure:", comments[0])
+        
         st.header("Comments")
-        display_nested_comments(comments, highlight_comment_id)
+        for comment in comments:
+            st.markdown(
+                f"""<div style='padding: 8px; border-left: 2px solid #ccc;'>
+                    <strong>u/{comment['author']}</strong> - 
+                    <i>Score: {comment['score']} | Posted on: {format_date(comment['created_utc'])}</i>
+                    <p>{comment['body']}</p>
+                </div>""",
+                unsafe_allow_html=True
+            )
+            st.divider()
     else:
         st.info("No comments found for this post")
 
