@@ -52,10 +52,10 @@ def display_nested_comments(comments, highlight_comment_id=None):
         # Filter out deleted replies
         valid_replies = [r for r in replies if comment_dict[r]['data']['body'] not in ['[deleted]', '[removed]']]
         
+        # Updated level labels
         level_label = {
             0: "Reply to Original Post (Level 1)",
-            1: "Reply (Level 2)",
-            2: "Reply to Reply (Level 3)",
+            1: "Reply to Original Comment (Level 2)",
         }.get(level, f"Level {level + 1} Reply")
         
         reply_count = len(valid_replies)
