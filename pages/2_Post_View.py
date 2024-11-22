@@ -43,7 +43,14 @@ def display_nested_comments(comments, highlight_comment_id=None):
             return ""
         
         comment = comment_dict[comment_id]['data']
+        
+        # Skip deleted comments
+        if comment['body'] in ['[deleted]', '[removed]']:
+            return ""
+            
         replies = comment_dict[comment_id]['replies']
+        # Filter out deleted replies
+        valid_replies = [r for r in replies if comment_dict[r]['data']['body'] not in ['[deleted]', '[removed]']]
         
         level_label = {
             0: "Reply to Original Post (Level 1)",
@@ -51,7 +58,7 @@ def display_nested_comments(comments, highlight_comment_id=None):
             2: "Reply to Reply (Level 3)",
         }.get(level, f"Level {level + 1} Reply")
         
-        reply_count = len(replies)
+        reply_count = len(valid_replies)
         reply_text = f"{reply_count} {'reply' if reply_count == 1 else 'replies'}" if reply_count > 0 else ""
         expand_button = f"""
             <button class="collapse-btn" onclick="toggleComment(this, '{comment['id']}')">
@@ -59,42 +66,22 @@ def display_nested_comments(comments, highlight_comment_id=None):
             </button>
         """ if reply_count > 0 else ""
         
-        # For top-level comments, always show content and add expand button for replies
-        if level == 0:
-            return f"""
-                <div class="comment" data-level="{level}">
-                    <div class="comment-header">
-                        <strong>u/{comment['author']}</strong> - 
-                        <span class="level-label">{level_label}</span><br>
-                        <span class="metadata">Score: {comment['score']} | Posted on: {format_date(comment['created_utc'])}</span>
-                    </div>
-                    <div class="comment-body">
-                        {comment['body']}
-                    </div>
-                    {expand_button}
-                    <div class="replies" id="replies-{comment['id']}" style="display: none;">
-                        {''.join(build_comment_html(reply_id, level + 1) for reply_id in replies)}
-                    </div>
+        return f"""
+            <div class="comment" data-level="{level}">
+                <div class="comment-header">
+                    <strong>u/{comment['author']}</strong> - 
+                    <span class="level-label">{level_label}</span><br>
+                    <span class="metadata">Score: {comment['score']} | Posted on: {format_date(comment['created_utc'])}</span>
                 </div>
-            """
-        # For nested replies, everything is collapsible
-        else:
-            return f"""
-                <div class="comment" data-level="{level}">
-                    <div class="comment-header">
-                        <strong>u/{comment['author']}</strong> - 
-                        <span class="level-label">{level_label}</span><br>
-                        <span class="metadata">Score: {comment['score']} | Posted on: {format_date(comment['created_utc'])}</span>
-                    </div>
-                    <div class="comment-body">
-                        {comment['body']}
-                    </div>
-                    {expand_button}
-                    <div class="replies" id="replies-{comment['id']}" style="display: none;">
-                        {''.join(build_comment_html(reply_id, level + 1) for reply_id in replies)}
-                    </div>
+                <div class="comment-body">
+                    {comment['body']}
                 </div>
-            """
+                {expand_button}
+                <div class="replies" id="replies-{comment['id']}" style="display: none;">
+                    {''.join(build_comment_html(reply_id, level + 1) for reply_id in valid_replies)}
+                </div>
+            </div>
+        """
 
     for comment_id in top_level_comments:
         comments_html += build_comment_html(comment_id)
@@ -142,6 +129,10 @@ def display_nested_comments(comments, highlight_comment_id=None):
                 color: #FAFAFA;
                 margin: 8px 0;
                 white-space: pre-wrap;
+                padding-left: 0;  /* Remove left padding */
+            }}
+            .replies {{
+                margin-left: 20px;  /* Add margin to replies container instead */
             }}
         </style>
         <script>
