@@ -58,6 +58,16 @@ def display_nested_comments(comments, highlight_comment_id=None):
             1: "Reply to Original Comment (Level 2)",
         }.get(level, f"Level {level + 1} Reply")
         
+        # Format links in comment body
+        body = comment['body']
+        # Convert markdown links to HTML
+        import re
+        body = re.sub(
+            r'\[(.*?)\]\((.*?)\)',
+            r'<a href="\2" target="_blank" class="comment-link">\1</a>',
+            body
+        )
+        
         reply_count = len(valid_replies)
         reply_text = f"{reply_count} {'reply' if reply_count == 1 else 'replies'}" if reply_count > 0 else ""
         expand_button = f"""
@@ -73,7 +83,7 @@ def display_nested_comments(comments, highlight_comment_id=None):
                     <span class="level-label">{level_label}</span><br>
                     <span class="metadata">Score: {comment['score']} | Posted on: {format_date(comment['created_utc'])}</span>
                 </div>
-                <p class="comment-body">{comment['body']}</p>
+                <p class="comment-body">{body}</p>
                 {expand_button}
                 <div class="replies" id="replies-{comment['id']}" style="display: none;">
                     {''.join(build_comment_html(reply_id, level + 1) for reply_id in valid_replies)}
@@ -129,6 +139,14 @@ def display_nested_comments(comments, highlight_comment_id=None):
                 white-space: pre-wrap;
                 text-indent: 0;
                 padding: 0;
+            }}
+            .comment-link {{
+                color: #58a6ff;
+                text-decoration: none;
+            }}
+            
+            .comment-link:hover {{
+                text-decoration: underline;
             }}
         </style>
         <script>
