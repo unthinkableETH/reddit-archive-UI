@@ -68,7 +68,7 @@ try:
     # Fetch comments
     comments = execute_query(
         GET_COMMENTS_FOR_POST.format(sort_order=SORT_ORDERS[comment_sort]), 
-        (f't3_{post_id}',)
+        (post_id,)
     )
     
     if comments:
