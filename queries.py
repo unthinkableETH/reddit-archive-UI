@@ -68,7 +68,7 @@ SEARCH_POSTS_EXACT = """
 """
 
 SEARCH_COMMENTS = """
-    SELECT id, link_id, author, body, created_utc, score, subreddit
+    SELECT id, submission_id, author, body, created_utc, score, subreddit
     FROM comments 
     WHERE to_tsvector('english', body) @@ plainto_tsquery('english', %s)
     {date_filter}
@@ -112,7 +112,7 @@ GET_USER_POSTS = """
 """
 
 GET_USER_COMMENTS = """
-    SELECT id, link_id, parent_id, body, created_utc, score, subreddit
+    SELECT id, submission_id, parent_id, body, created_utc, score, subreddit
     FROM comments 
     WHERE author = %s
     ORDER BY {sort_order}
