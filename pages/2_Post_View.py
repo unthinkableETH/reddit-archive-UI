@@ -266,11 +266,14 @@ try:
                     is_highlighted = comment['id'] == highlight_comment_id
                     style = "background-color: rgba(255, 0, 0, 0.1);" if is_highlighted else ""
                     
+                    # Pre-process the comment body to replace newlines
+                    comment_body = comment['body'].replace('\n', '<br>')
+                    
                     st.markdown(
                         f"""<div style='padding: 8px; border-left: 2px solid #ccc;'>
                             <strong>u/{comment['author']}</strong> - 
                             <i>Score: {comment['score']} | Posted on: {format_date(comment['created_utc'])}</i>
-                            <div style="{style}">{comment['body'].replace('\n', '<br>')}</div>
+                            <div style="{style}">{comment_body}</div>
                         </div>""",
                         unsafe_allow_html=True
                     )
