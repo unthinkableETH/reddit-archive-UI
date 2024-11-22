@@ -49,10 +49,19 @@ def display_nested_comments(comments, highlight_comment_id=None):
         is_highlighted = comment['id'] == highlight_comment_id
         highlight_style = "color: red;" if is_highlighted else ""
         
+        # Add level label
+        level_label = {
+            0: "Top Level",
+            1: "Reply",
+            2: "Reply to Reply",
+            3: "Deep Reply",
+            4: "Very Deep Reply"
+        }.get(level, f"Level {level} Reply")
+        
         st.markdown(
             f"""
             <div style='margin-left: {left_margin}px; padding: 8px; border-left: 2px solid #ccc;'>
-                <strong>u/{comment['author']}</strong> - 
+                <strong>u/{comment['author']}</strong> - <span style='color: #666;'>{level_label}</span><br>
                 <i>Score: {comment['score']} | Posted on: {format_date(comment['created_utc'])}</i>
                 <p style="{highlight_style}">{comment['body']}</p>
             </div>
