@@ -13,6 +13,32 @@ st.markdown(DARK_THEME_CSS, unsafe_allow_html=True)
 
 def display_nested_comments(comments, highlight_comment_id=None):
     """Display comments in a nested tree structure"""
+    # Add CSS for collapsible comments
+    st.markdown("""
+        <style>
+            .comment-thread {
+                margin-bottom: 8px;
+            }
+            .collapse-button {
+                color: #4a4a4a;
+                background: transparent;
+                border: 1px solid #4a4a4a;
+                border-radius: 3px;
+                padding: 1px 6px;
+                font-size: 12px;
+                margin-right: 8px;
+                cursor: pointer;
+            }
+            .collapse-button:hover {
+                background: #4a4a4a;
+                color: white;
+            }
+            .comment-content {
+                margin-top: 4px;
+            }
+        </style>
+    """, unsafe_allow_html=True)
+    
     comment_dict = {}
     top_level_comments = []
     
@@ -27,14 +53,13 @@ def display_nested_comments(comments, highlight_comment_id=None):
     # Second pass: build the hierarchy
     for comment in comments:
         parent_id = comment['parent_id']
-        if parent_id == post_id:  # Top-level comment (direct reply to post)
+        if parent_id == post_id:
             top_level_comments.append(comment['id'])
-        else:  # Reply to another comment
+        else:
             if parent_id in comment_dict:
                 comment_dict[parent_id]['replies'].append(comment['id'])
                 comment_dict[comment['id']]['level'] = comment_dict[parent_id]['level'] + 1
     
-    # Function to recursively display comments
     def display_comment_tree(comment_id, level=0):
         if comment_id not in comment_dict:
             return
@@ -42,27 +67,41 @@ def display_nested_comments(comments, highlight_comment_id=None):
         comment = comment_dict[comment_id]['data']
         replies = comment_dict[comment_id]['replies']
         
-        # Calculate indentation
-        left_margin = min(level * 20, 200)  # Max indent of 200px
-        
-        # Check if this is the highlighted comment
+        left_margin = min(level * 20, 200)
         is_highlighted = comment['id'] == highlight_comment_id
         highlight_style = "color: red;" if is_highlighted else ""
         
-        # Add level label with numbers for all levels
+        # Level label with numbers
         level_label = {
             0: "Reply to Original Post (Level 1)",
             1: "Reply (Level 2)",
             2: "Reply to Reply (Level 3)",
         }.get(level, f"Level {level + 1} Reply")
         
+        # Add collapse button if there are replies
+        collapse_button = ""
+        if replies:
+            reply_count = len(replies)
+            collapse_button = f"""
+                <button class="collapse-button" 
+                        onclick="toggleReplies('{comment['id']}')">
+                    [-] {reply_count} {('reply' if reply_count == 1 else 'replies')}
+                </button>
+            """
+        
         st.markdown(
             f"""
-            <div style='margin-left: {left_margin}px; padding: 8px; border-left: 2px solid #ccc;'>
-                <strong>u/{comment['author']}</strong> - <span style='color: #666;'>{level_label}</span><br>
-                <i>Score: {comment['score']} | Posted on: {format_date(comment['created_utc'])}</i>
-                <p style="{highlight_style}">{comment['body']}</p>
-            </div>
+            <div class="comment-thread">
+                <div style='margin-left: {left_margin}px; padding: 8px; border-left: 2px solid #ccc;'>
+                    {collapse_button}
+                    <strong>u/{comment['author']}</strong> - 
+                    <span style='color: #666;'>{level_label}</span><br>
+                    <i>Score: {comment['score']} | Posted on: {format_date(comment['created_utc'])}</i>
+                    <div class="comment-content" style="{highlight_style}">
+                        {comment['body']}
+                    </div>
+                </div>
+                <div id="replies-{comment['id']}" style="display: block;">
             """, 
             unsafe_allow_html=True
         )
@@ -70,6 +109,26 @@ def display_nested_comments(comments, highlight_comment_id=None):
         # Display replies
         for reply_id in replies:
             display_comment_tree(reply_id, level + 1)
+            
+        # Close the replies div
+        st.markdown("</div></div>", unsafe_allow_html=True)
+    
+    # Add JavaScript for toggling replies
+    st.markdown("""
+        <script>
+            function toggleReplies(commentId) {
+                const repliesDiv = document.getElementById('replies-' + commentId);
+                const button = event.target;
+                if (repliesDiv.style.display === 'none') {
+                    repliesDiv.style.display = 'block';
+                    button.textContent = button.textContent.replace('[+]', '[-]');
+                } else {
+                    repliesDiv.style.display = 'none';
+                    button.textContent = button.textContent.replace('[-]', '[+]');
+                }
+            }
+        </script>
+    """, unsafe_allow_html=True)
     
     # Display all top-level comments and their replies
     for comment_id in top_level_comments:
