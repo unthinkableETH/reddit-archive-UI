@@ -1,82 +1,10 @@
-import streamlit as st
-from database import execute_query
-from queries import GET_POST_BY_ID, GET_COMMENTS_FOR_POST, SORT_ORDERS
-from utils import format_date, DARK_THEME_CSS
+{
+"id":"gi2nafo"
+"parent_id":"kq9elt"
+"body":"Completely agreed with this. Also, if I spotted a rando following me to take a photo, they'd meet these badly manicured hands 😂(don't judge me for the bad manicure, covid is not being kind 😂)
 
-st.set_page_config(
-    page_title="Post View",
-    page_icon="👜",
-    layout="wide"
-)
-
-st.markdown(DARK_THEME_CSS, unsafe_allow_html=True)
-
-# Get post and comment IDs from URL parameters
-params = st.query_params
-post_id = params.get("post_id")
-highlight_comment_id = params.get("comment_id")
-
-if not post_id:
-    st.error("No post ID provided in the URL.")
-    st.stop()
-
-# Sidebar controls
-with st.sidebar:
-    st.header("Comment Controls")
-    comment_sort = st.selectbox(
-        "Sort comments by",
-        ["most_upvotes", "newest", "oldest"],
-        format_func=lambda x: {
-            "most_upvotes": "Most Upvotes",
-            "newest": "Newest",
-            "oldest": "Oldest"
-        }[x]
-    )
-
-try:
-    # Fetch post
-    post = execute_query(GET_POST_BY_ID, (post_id,))
-    
-    if not post:
-        st.error("Post not found")
-        st.stop()
-        
-    post = post[0]
-    
-    # Display post
-    st.title(post['title'])
-    st.write(post['selftext'])
-    st.markdown(
-        f"Posted by u/{post['author']} in r/{post['subreddit']} | "
-        f"Score: {post['score']} | "
-        f"Comments: {post['num_comments']} | "
-        f"Posted on: {format_date(post['created_utc'])}"
-    )
-    st.divider()
-    
-    # Fetch comments
-    comments = execute_query(
-        GET_COMMENTS_FOR_POST.format(sort_order=SORT_ORDERS[comment_sort]), 
-        (post_id,)
-    )
-    
-    # Debug: Print first comment structure
-    if comments:
-        st.write("Debug - First comment structure:", comments[0])
-        
-        st.header("Comments")
-        for comment in comments:
-            st.markdown(
-                f"""<div style='padding: 8px; border-left: 2px solid #ccc;'>
-                    <strong>u/{comment['author']}</strong> - 
-                    <i>Score: {comment['score']} | Posted on: {format_date(comment['created_utc'])}</i>
-                    <p>{comment['body']}</p>
-                </div>""",
-                unsafe_allow_html=True
-            )
-            st.divider()
-    else:
-        st.info("No comments found for this post")
-
-except Exception as e:
-    st.error(f"Error loading post: {str(e)}")
+There is so much implicit classism (and I'd say racism) in QCing people in the wild. It reproduces the same dynamics of elitist jerks who are "alarmed" that the uncouth masses wear brands they think as exclusive (see comments on LV demographic change for an example). I grew up in a country where the poor wore bad reps with pride. My mom would buy me awful reps and nobody thought anything of it. Moreover, nobody was under the impression that they were auth either. We just wore what we wore because we thought it was fashion. Now I can afford any auth of the reps I buy but I still have a fond memory of those terrible reps. My dad bought me my first Cartier watch rep when I was 14, like 30+ years ago. He had no clue what Cartier was but just thought I'd like it because it looked trendy. I feel weirdly protective of people who wear bad reps because that was once me and my family."
+"author":"lacarancha"
+"created_utc":1609773100
+"score":453
+}
