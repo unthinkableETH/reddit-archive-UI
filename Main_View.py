@@ -49,7 +49,7 @@ try:
             with col1:
                 st.markdown(f"### {post['title']}")
                 st.markdown(
-                    f"Posted by u/{post['author']} in r/{post['subreddit']} | "
+                    f"Posted by u/{post['author']} | "
                     f"Score: {post['score']} | "
                     f"Comments: {post['num_comments']} | "
                     f"Posted on: {format_date(post['created_utc'])}"
