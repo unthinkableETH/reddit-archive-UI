@@ -52,25 +52,23 @@ def display_nested_comments(comments, highlight_comment_id=None):
         }.get(level, f"Level {level + 1} Reply")
         
         reply_count = len(replies)
-        reply_text = f"({reply_count} {'reply' if reply_count == 1 else 'replies'})" if reply_count > 0 else ""
-        
-        # Set initial button state and display style based on level
-        initial_button = "[-]" if level == 0 else "[+]"
-        initial_display = "block" if level == 0 else "none"
+        reply_text = f"({reply_count} {'reply' if reply_count == 1 else 'replies'})" if reply_count > 0 else "(no replies)"
         
         return f"""
             <div class="comment" data-level="{level}">
                 <div class="comment-header">
                     <button class="collapse-btn" onclick="toggleComment('{comment['id']}')">
-                        {initial_button} {reply_text}
+                        [+] Click to expand/collapse {reply_text}
                     </button>
                     <strong>u/{comment['author']}</strong> - 
                     <span class="level-label">{level_label}</span><br>
                     <span class="metadata">Score: {comment['score']} | Posted on: {format_date(comment['created_utc'])}</span>
                 </div>
                 <div id="content-{comment['id']}" class="comment-content">
-                    <div class="comment-body">{comment['body']}</div>
-                    <div class="replies" id="replies-{comment['id']}" style="display: {initial_display};">
+                    <div class="comment-body" id="body-{comment['id']}" style="display: none;">
+                        {comment['body']}
+                    </div>
+                    <div class="replies" id="replies-{comment['id']}" style="display: none;">
                         {''.join(build_comment_html(reply_id, level + 1) for reply_id in replies)}
                     </div>
                 </div>
@@ -102,9 +100,10 @@ def display_nested_comments(comments, highlight_comment_id=None):
                 background: transparent;
                 border: 1px solid #666;
                 color: #FAFAFA;
-                padding: 0 5px;
+                padding: 2px 8px;
                 margin-right: 8px;
                 cursor: pointer;
+                border-radius: 3px;
             }}
             .collapse-btn:hover {{
                 background: #666;
@@ -125,30 +124,23 @@ def display_nested_comments(comments, highlight_comment_id=None):
         </style>
         <script>
             function toggleComment(id) {{
-                const content = document.getElementById('replies-' + id);
+                const body = document.getElementById('body-' + id);
+                const replies = document.getElementById('replies-' + id);
                 const btn = event.target;
-                if (content.style.display === 'none') {{
-                    content.style.display = 'block';
-                    btn.textContent = btn.textContent.replace('[+]', '[-]');
-                }} else {{
-                    content.style.display = 'none';
-                    btn.textContent = btn.textContent.replace('[-]', '[+]');
-                }}
+                const isExpanded = body.style.display === 'block';
+                
+                body.style.display = isExpanded ? 'none' : 'block';
+                if (replies) replies.style.display = isExpanded ? 'none' : 'block';
+                
+                btn.textContent = btn.textContent.replace(
+                    isExpanded ? '[-]' : '[+]',
+                    isExpanded ? '[+]' : '[-]'
+                );
+                
+                // Update the text
+                const replyText = btn.textContent.match(/\(.*\)/)[0];
+                btn.textContent = `${isExpanded ? '[+]' : '[-]'} Click to ${isExpanded ? 'expand' : 'collapse'} ${replyText}`;
             }}
-
-            // Initialize all comments on load
-            document.addEventListener('DOMContentLoaded', function() {{
-                const comments = document.querySelectorAll('.comment');
-                comments.forEach(comment => {{
-                    const level = parseInt(comment.getAttribute('data-level'));
-                    if (level > 0) {{
-                        const replies = comment.querySelector('.replies');
-                        if (replies) {{
-                            replies.style.display = 'none';
-                        }}
-                    }}
-                }});
-            }});
         </script>
         <div class="comments-container">
             {comments_html}
