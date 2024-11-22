@@ -3,15 +3,6 @@ from database import execute_query
 from queries import GET_POSTS, SORT_ORDERS
 from utils import format_date, DARK_THEME_CSS
 
-def debug_table_structure():
-    query = """
-    SELECT column_name 
-    FROM information_schema.columns 
-    WHERE table_name = 'comments';
-    """
-    columns = execute_query(query)
-    st.write("Debug - Comments table columns:", columns)
-
 st.set_page_config(
     page_title="RepLadies Archive",
     page_icon="👜",
@@ -21,8 +12,6 @@ st.set_page_config(
 st.markdown(DARK_THEME_CSS, unsafe_allow_html=True)
 
 st.title("RepLadies Reddit Archive")
-
-debug_table_structure()
 
 # Navigation using containers
 col1, col2, col3 = st.columns(3)
