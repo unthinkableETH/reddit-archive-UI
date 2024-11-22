@@ -49,14 +49,12 @@ def display_nested_comments(comments, highlight_comment_id=None):
         is_highlighted = comment['id'] == highlight_comment_id
         highlight_style = "color: red;" if is_highlighted else ""
         
-        # Add level label
+        # Add level label with numbers for all levels
         level_label = {
-            0: "Top Level",
-            1: "Reply",
-            2: "Reply to Reply",
-            3: "Deep Reply",
-            4: "Very Deep Reply"
-        }.get(level, f"Level {level} Reply")
+            0: "Reply to Original Post (Level 1)",
+            1: "Reply (Level 2)",
+            2: "Reply to Reply (Level 3)",
+        }.get(level, f"Level {level + 1} Reply")
         
         st.markdown(
             f"""
