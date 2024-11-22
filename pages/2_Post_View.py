@@ -52,28 +52,49 @@ def display_nested_comments(comments, highlight_comment_id=None):
         }.get(level, f"Level {level + 1} Reply")
         
         reply_count = len(replies)
-        reply_text = f"({reply_count} {'reply' if reply_count == 1 else 'replies'})" if reply_count > 0 else "(no replies)"
+        reply_text = f"View {reply_count} {'reply' if reply_count == 1 else 'replies'}" if reply_count > 0 else ""
+        expand_button = f"""
+            <button class="collapse-btn" onclick="toggleComment('{comment['id']}')">
+                [+] {reply_text}
+            </button>
+        """ if reply_count > 0 else ""
         
-        return f"""
-            <div class="comment" data-level="{level}">
-                <div class="comment-header">
-                    <button class="collapse-btn" onclick="toggleComment('{comment['id']}')">
-                        [+] Click to expand {reply_text}
-                    </button>
-                    <strong>u/{comment['author']}</strong> - 
-                    <span class="level-label">{level_label}</span><br>
-                    <span class="metadata">Score: {comment['score']} | Posted on: {format_date(comment['created_utc'])}</span>
-                </div>
-                <div id="content-{comment['id']}" class="comment-content">
-                    <div class="comment-body" id="body-{comment['id']}" style="display: none;">
+        # For top-level comments, always show content and add expand button for replies
+        if level == 0:
+            return f"""
+                <div class="comment" data-level="{level}">
+                    <div class="comment-header">
+                        <strong>u/{comment['author']}</strong> - 
+                        <span class="level-label">{level_label}</span><br>
+                        <span class="metadata">Score: {comment['score']} | Posted on: {format_date(comment['created_utc'])}</span>
+                    </div>
+                    <div class="comment-body">
                         {comment['body']}
                     </div>
+                    {expand_button}
                     <div class="replies" id="replies-{comment['id']}" style="display: none;">
                         {''.join(build_comment_html(reply_id, level + 1) for reply_id in replies)}
                     </div>
                 </div>
-            </div>
-        """
+            """
+        # For nested replies, everything is collapsible
+        else:
+            return f"""
+                <div class="comment" data-level="{level}">
+                    <div class="comment-header">
+                        <strong>u/{comment['author']}</strong> - 
+                        <span class="level-label">{level_label}</span><br>
+                        <span class="metadata">Score: {comment['score']} | Posted on: {format_date(comment['created_utc'])}</span>
+                    </div>
+                    <div class="comment-body">
+                        {comment['body']}
+                    </div>
+                    {expand_button}
+                    <div class="replies" id="replies-{comment['id']}" style="display: none;">
+                        {''.join(build_comment_html(reply_id, level + 1) for reply_id in replies)}
+                    </div>
+                </div>
+            """
 
     for comment_id in top_level_comments:
         comments_html += build_comment_html(comment_id)
@@ -101,9 +122,10 @@ def display_nested_comments(comments, highlight_comment_id=None):
                 border: 1px solid #666;
                 color: #FAFAFA;
                 padding: 2px 8px;
-                margin-right: 8px;
+                margin: 8px 0;
                 cursor: pointer;
                 border-radius: 3px;
+                display: block;
             }}
             .collapse-btn:hover {{
                 background: #666;
@@ -124,24 +146,16 @@ def display_nested_comments(comments, highlight_comment_id=None):
         </style>
         <script>
             function toggleComment(id) {{
-                const body = document.getElementById('body-' + id);
                 const replies = document.getElementById('replies-' + id);
                 const btn = event.target;
-                const isExpanded = body.style.display === 'block';
+                const isExpanded = replies.style.display === 'block';
                 
-                // Toggle display
-                body.style.display = isExpanded ? 'none' : 'block';
-                if (replies) replies.style.display = isExpanded ? 'none' : 'block';
+                replies.style.display = isExpanded ? 'none' : 'block';
                 
-                // Get the reply count text
-                const replyText = btn.textContent.match(/\(.*\)/)[0];
-                
-                // Update button text
-                if (isExpanded) {{
-                    btn.textContent = '[+] Click to expand ' + replyText;
-                }} else {{
-                    btn.textContent = '[-] Click to collapse ' + replyText;
-                }}
+                const replyCount = btn.textContent.match(/View \d+/)[0].split(' ')[1];
+                btn.textContent = isExpanded ? 
+                    `[+] View ${replyCount} ${replyCount === '1' ? 'reply' : 'replies'}` : 
+                    `[-] Hide ${replyCount} ${replyCount === '1' ? 'reply' : 'replies'}`;
             }}
         </script>
         <div class="comments-container">
