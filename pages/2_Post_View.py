@@ -224,7 +224,7 @@ try:
     st.title(post['title'])
     st.write(post['selftext'])
     st.markdown(
-        f"Posted by u/{post['author']} in r/{post['subreddit']} | "
+        f"Posted by u/{post['author']} | "
         f"Score: {post['score']} | "
         f"Comments: {post['num_comments']} | "
         f"Posted on: {format_date(post['created_utc'])}"
