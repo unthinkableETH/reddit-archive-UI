@@ -54,7 +54,7 @@ def display_nested_comments(comments, highlight_comment_id=None):
         reply_count = len(replies)
         reply_text = f"View {reply_count} {'reply' if reply_count == 1 else 'replies'}" if reply_count > 0 else ""
         expand_button = f"""
-            <button class="collapse-btn" onclick="toggleComment('{comment['id']}')">
+            <button class="collapse-btn" onclick="toggleComment('{comment['id']}', {reply_count})">
                 [+] {reply_text}
             </button>
         """ if reply_count > 0 else ""
@@ -145,17 +145,19 @@ def display_nested_comments(comments, highlight_comment_id=None):
             }}
         </style>
         <script>
-            function toggleComment(id) {{
+            function toggleComment(id, replyCount) {{
                 const replies = document.getElementById('replies-' + id);
                 const btn = event.target;
                 const isExpanded = replies.style.display === 'block';
                 
                 replies.style.display = isExpanded ? 'none' : 'block';
                 
-                const replyCount = btn.textContent.match(/View \d+/)[0].split(' ')[1];
-                btn.textContent = isExpanded ? 
-                    `[+] View ${replyCount} ${replyCount === '1' ? 'reply' : 'replies'}` : 
-                    `[-] Hide ${replyCount} ${replyCount === '1' ? 'reply' : 'replies'}`;
+                const replyWord = replyCount === 1 ? 'reply' : 'replies';
+                if (isExpanded) {{
+                    btn.textContent = `[+] View ${replyCount} ${replyWord}`;
+                }} else {{
+                    btn.textContent = `[-] Hide ${replyCount} ${replyWord}`;
+                }}
             }}
         </script>
         <div class="comments-container">
