@@ -58,7 +58,7 @@ def display_nested_comments(comments, highlight_comment_id=None):
             <div class="comment" data-level="{level}">
                 <div class="comment-header">
                     <button class="collapse-btn" onclick="toggleComment('{comment['id']}')">
-                        [+] Click to expand/collapse {reply_text}
+                        [+] Click to expand {reply_text}
                     </button>
                     <strong>u/{comment['author']}</strong> - 
                     <span class="level-label">{level_label}</span><br>
@@ -129,17 +129,19 @@ def display_nested_comments(comments, highlight_comment_id=None):
                 const btn = event.target;
                 const isExpanded = body.style.display === 'block';
                 
+                // Toggle display
                 body.style.display = isExpanded ? 'none' : 'block';
                 if (replies) replies.style.display = isExpanded ? 'none' : 'block';
                 
-                btn.textContent = btn.textContent.replace(
-                    isExpanded ? '[-]' : '[+]',
-                    isExpanded ? '[+]' : '[-]'
-                );
-                
-                // Update the text
+                // Get the reply count text
                 const replyText = btn.textContent.match(/\(.*\)/)[0];
-                btn.textContent = `${isExpanded ? '[+]' : '[-]'} Click to ${isExpanded ? 'expand' : 'collapse'} ${replyText}`;
+                
+                // Update button text
+                if (isExpanded) {{
+                    btn.textContent = '[+] Click to expand ' + replyText;
+                }} else {{
+                    btn.textContent = '[-] Click to collapse ' + replyText;
+                }}
             }}
         </script>
         <div class="comments-container">
