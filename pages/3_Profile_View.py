@@ -83,7 +83,7 @@ if username:
                         st.markdown(
                             f"Score: {post['score']} | "
                             f"Comments: {post['num_comments']} | "
-                            f"Posted on: {format_date(post['created_utc'])} in r/{post['subreddit']}"
+                            f"Posted on: {format_date(post['created_utc'])}"
                         )
                         
                         col1, col2 = st.columns([4, 1])
@@ -111,7 +111,7 @@ if username:
                     st.markdown(
                         f"""<div style='padding: 8px; border-left: 2px solid #ccc;'>
                             <i>Score: {comment['score']} | "
-                            Posted on: {format_date(comment['created_utc'])} in r/{comment['subreddit']}</i>
+                            Posted on: {format_date(comment['created_utc'])}</i>
                             <p>{comment['body']}</p>
                             <a href="/Post_View?post_id={comment['submission_id']}&comment_id={comment['id']}">
                                 View Full Discussion
