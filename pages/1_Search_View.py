@@ -85,7 +85,7 @@ if search_query:
                     with st.container():
                         st.markdown(f"### {post['title']}")
                         st.markdown(
-                            f"Posted by u/{post['author']} in r/{post['subreddit']} | "
+                            f"Posted by u/{post['author']} | "
                             f"Score: {post['score']} | "
                             f"Comments: {post['num_comments']} | "
                             f"Posted on: {format_date(post['created_utc'])}"
@@ -110,7 +110,7 @@ if search_query:
                         st.markdown(
                             f"""
                             <div style='padding: 8px; border-left: 2px solid #ccc;'>
-                                <strong>u/{comment['author']}</strong> in r/{comment['subreddit']}<br>
+                                <strong>u/{comment['author']}</strong><br>
                                 <i>Score: {comment['score']} | Posted on: {format_date(comment['created_utc'])}</i>
                                 <p>{comment['body']}</p>
                                 <a href="/Post_View?post_id={comment['submission_id']}&comment_id={comment['id']}">
