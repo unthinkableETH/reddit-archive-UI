@@ -113,7 +113,7 @@ if search_query:
                                 <strong>u/{comment['author']}</strong> in r/{comment['subreddit']}<br>
                                 <i>Score: {comment['score']} | Posted on: {format_date(comment['created_utc'])}</i>
                                 <p>{comment['body']}</p>
-                                <a href="/Post_View?post_id={comment['link_id'].split('_')[1]}&comment_id={comment['id']}">
+                                <a href="/Post_View?post_id={comment['submission_id']}&comment_id={comment['id']}">
                                     View Full Discussion
                                 </a>
                             </div>
