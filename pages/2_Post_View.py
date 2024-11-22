@@ -264,13 +264,13 @@ try:
                 st.header("Highlighted Comment Thread")
                 for comment in highlighted_chain:
                     is_highlighted = comment['id'] == highlight_comment_id
-                    style = "color: red;" if is_highlighted else ""
+                    style = "background-color: rgba(255, 0, 0, 0.1);" if is_highlighted else ""
                     
                     st.markdown(
                         f"""<div style='padding: 8px; border-left: 2px solid #ccc;'>
                             <strong>u/{comment['author']}</strong> - 
                             <i>Score: {comment['score']} | Posted on: {format_date(comment['created_utc'])}</i>
-                            <p style="{style}">{comment['body']}</p>
+                            <div style="{style}">{comment['body'].replace('\n', '<br>')}</div>
                         </div>""",
                         unsafe_allow_html=True
                     )
