@@ -91,7 +91,13 @@ if search_query:
                 )
                 
                 if results and results.get('results'):
-                    st.header(f"Comments ({len(results['results'])} shown)")
+                    st.header(f"Comments ({results['total_results']} total)")
+                    
+                    # Progress through results
+                    current_start = ((results['page'] - 1) * results['limit']) + 1
+                    current_end = min(current_start + len(results['results']) - 1, results['total_results'])
+                    st.caption(f"Showing results {current_start} - {current_end} of {results['total_results']}")
+                    
                     for comment in results['results']:
                         with st.container():
                             st.markdown(
@@ -109,20 +115,22 @@ if search_query:
                             )
                             st.divider()
                     
-                    # Pagination for API results
-                    col1, col2, col3 = st.columns([1, 2, 1])
-                    with col1:
-                        if results['page'] > 1:
-                            if st.button("← Previous"):
-                                st.session_state.page = results['page'] - 1
-                                st.rerun()
-                    with col2:
-                        st.write(f"Page {results['page']}")
-                    with col3:
-                        if len(results['results']) == results['limit']:
-                            if st.button("Next →"):
-                                st.session_state.page = results['page'] + 1
-                                st.rerun()
+                    # Enhanced pagination
+                    pages_section = st.container()
+                    with pages_section:
+                        cols = st.columns([1, 2, 1])
+                        with cols[0]:
+                            if results['page'] > 1:
+                                if st.button("← Previous"):
+                                    st.session_state.page = results['page'] - 1
+                                    st.rerun()
+                        with cols[1]:
+                            st.write(f"Page {results['page']} of {results['total_pages']}")
+                        with cols[2]:
+                            if results['page'] < results['total_pages']:
+                                if st.button("Next →"):
+                                    st.session_state.page = results['page'] + 1
+                                    st.rerun()
                 else:
                     st.info("No results found")
                     
