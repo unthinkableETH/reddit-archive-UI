@@ -12,7 +12,7 @@ st.markdown(DARK_THEME_CSS, unsafe_allow_html=True)
 
 st.title("Admin View")
 
-# Password protection
+# Password protection - access nested secret
 if "admin_authenticated" not in st.session_state:
     st.session_state.admin_authenticated = False
 
@@ -20,7 +20,7 @@ if not st.session_state.admin_authenticated:
     with st.form("admin_login"):
         password = st.text_input("Admin Password", type="password")
         if st.form_submit_button("Login"):
-            if password == st.secrets["admin_password"]:
+            if password == st.secrets["postgres"]["admin_password"]:  # Changed this line
                 st.session_state.admin_authenticated = True
                 st.rerun()
             else:
@@ -110,4 +110,3 @@ with st.expander("Add Text Search Indexes"):
             
         except Exception as e:
             st.error(f"Error creating indexes: {str(e)}")
-
