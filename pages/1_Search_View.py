@@ -14,7 +14,7 @@ st.markdown(DARK_THEME_CSS, unsafe_allow_html=True)
 
 st.title("Search RepLadies Archive")
 
-# Add API endpoint constants
+# API endpoint constants
 API_BASE_URL = "https://m6njm571hh.execute-api.us-east-2.amazonaws.com"
 
 def search_api_posts(query: str, sort: str, search_type: str = "title_body", page: int = 1, limit: int = 20):
@@ -26,6 +26,33 @@ def search_api_posts(query: str, sort: str, search_type: str = "title_body", pag
                 "query": query,
                 "sort": sort,
                 "search_type": search_type,
+                "page": page,
+                "limit": limit
+            },
+            timeout=15
+        )
+        
+        if response.status_code != 200:
+            st.error(f"API Error ({response.status_code}): {response.text}")
+            return None
+            
+        return response.json()
+        
+    except requests.Timeout:
+        st.error("Search took too long. Please try a more specific search term.")
+        return None
+    except requests.RequestException as e:
+        st.error(f"API Error: {str(e)}")
+        return None
+
+def search_api_comments(query: str, sort: str, page: int = 1, limit: int = 20):
+    """Search comments using the API"""
+    try:
+        response = requests.get(
+            f"{API_BASE_URL}/api/search/comments",
+            params={
+                "query": query,
+                "sort": sort,
                 "page": page,
                 "limit": limit
             },
@@ -89,6 +116,9 @@ search_query = st.text_input("Enter your search terms", key="search_box")
 
 if search_query:
     try:
+        post_results = None
+        comment_results = None
+        
         if search_method == "Fast Search (Beta)":
             # Handle post searches
             if search_type in ["post_title", "post_body", "everything"]:
