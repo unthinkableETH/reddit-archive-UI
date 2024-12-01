@@ -1,7 +1,7 @@
 import streamlit as st
 import requests
 from utils import format_date, DARK_THEME_CSS
-from datetime import datetime
+from datetime import datetime, date
 
 st.set_page_config(
     page_title="Search RepLadies Archive",
@@ -27,10 +27,10 @@ def search_api_posts(query: str, sort: str, search_type: str = "title_body", pag
             "limit": limit
         }
         
-        # Add date parameters if provided
-        if start_date:
+        # Only add date parameters if they're valid dates
+        if isinstance(start_date, (datetime, date)):
             params["start_date"] = start_date.strftime("%Y-%m-%d")
-        if end_date:
+        if isinstance(end_date, (datetime, date)):
             params["end_date"] = end_date.strftime("%Y-%m-%d")
             
         response = requests.get(
@@ -40,7 +40,14 @@ def search_api_posts(query: str, sort: str, search_type: str = "title_body", pag
         )
         
         if response.status_code != 200:
-            st.error(f"API Error ({response.status_code}): {response.text}")
+            error_msg = response.text
+            try:
+                error_data = response.json()
+                if 'detail' in error_data:
+                    error_msg = error_data['detail']
+            except:
+                pass
+            st.error(f"API Error ({response.status_code}): {error_msg}")
             return None
             
         return response.json()
