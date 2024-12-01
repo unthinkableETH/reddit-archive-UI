@@ -126,23 +126,49 @@ with st.sidebar:
         }[x]
     )
     
-    # Only show most_comments option for post searches
-    available_sort_options = (
-        ["most_upvotes", "newest", "oldest", "most_comments"]
-        if search_type in ["post_title", "post_body", "everything"]
-        else ["most_upvotes", "newest", "oldest"]
-    )
-    
-    sort_by = st.selectbox(
-        "Sort by:",
-        available_sort_options,
-        format_func=lambda x: {
-            "most_upvotes": "Most Upvotes",
-            "newest": "Newest First",
-            "oldest": "Oldest First",
-            "most_comments": "Most Comments"
-        }[x]
-    )
+    # Show different sort options based on search type
+    if search_type == "everything":
+        st.subheader("Sort Options")
+        col1, col2 = st.columns(2)
+        with col1:
+            post_sort = st.selectbox(
+                "Sort Posts by:",
+                ["most_upvotes", "newest", "oldest", "most_comments"],
+                format_func=lambda x: {
+                    "most_upvotes": "Most Upvotes",
+                    "newest": "Newest First",
+                    "oldest": "Oldest First",
+                    "most_comments": "Most Comments"
+                }[x]
+            )
+        with col2:
+            comment_sort = st.selectbox(
+                "Sort Comments by:",
+                ["most_upvotes", "newest", "oldest"],
+                format_func=lambda x: {
+                    "most_upvotes": "Most Upvotes",
+                    "newest": "Newest First",
+                    "oldest": "Oldest First"
+                }[x]
+            )
+    else:
+        # Single sort option for other search types
+        sort_options = (
+            ["most_upvotes", "newest", "oldest", "most_comments"]
+            if search_type in ["post_title", "post_body"]
+            else ["most_upvotes", "newest", "oldest"]
+        )
+        
+        sort_by = st.selectbox(
+            "Sort by:",
+            sort_options,
+            format_func=lambda x: {
+                "most_upvotes": "Most Upvotes",
+                "newest": "Newest First",
+                "oldest": "Oldest First",
+                "most_comments": "Most Comments"
+            }[x]
+        )
     
     # Date range picker
     st.subheader("Date Range")
@@ -174,81 +200,89 @@ if search_query:
         
         # Handle post searches
         if search_type in ["post_title", "post_body", "everything"]:
-            api_search_type = {
-                "post_title": "title",
-                "post_body": "body",
-                "everything": "title_body"
-            }[search_type]
-            
             with st.spinner("Searching posts..."):
+                api_search_type = {
+                    "post_title": "title",
+                    "post_body": "body",
+                    "everything": "title_body"
+                }[search_type]
+                
                 post_results = search_api_posts(
                     query=search_query,
-                    sort=sort_by,
+                    sort=post_sort if search_type == "everything" else sort_by,
                     search_type=api_search_type,
                     page=st.session_state.get('page', 1),
                     start_date=start_date,
                     end_date=end_date
                 )
-                
-                if post_results and post_results.get('results'):
-                    st.header(f"Posts ({post_results['total_results']} total)")
-                    st.caption(f"Sorted by: {sort_by}")
-                    
-                    current_start = ((post_results['page'] - 1) * post_results['limit']) + 1
-                    current_end = min(current_start + len(post_results['results']) - 1, post_results['total_results'])
-                    st.caption(f"Showing results {current_start} - {current_end} of {post_results['total_results']}")
-                    
-                    for post in post_results['results']:
-                        with st.container():
-                            st.markdown(f"### {post['title']}")
-                            st.markdown(
-                                f"Posted by u/{post['author']} | "
-                                f"Score: {post.get('score', 'N/A')} | "  # Handle possible NULL values
-                                f"Comments: {post.get('num_comments', 'N/A')} | "  # Handle possible NULL values
-                                f"Posted on: {post['formatted_date']}"
-                            )
-                            with st.expander("Show Content"):
-                                st.write(post['selftext'])
-                            st.divider()
-                else:
-                    st.info("No posts found matching your search.")
 
         # Handle comment searches
         if search_type in ["comments", "everything"]:
             with st.spinner("Searching comments..."):
                 comment_results = search_api_comments(
                     query=search_query,
-                    sort=sort_by,
+                    sort=comment_sort if search_type == "everything" else sort_by,
                     page=st.session_state.get('page', 1),
                     start_date=start_date,
                     end_date=end_date
                 )
-                
-                if comment_results and comment_results.get('results'):
-                    st.header(f"Comments ({comment_results['total_results']} total)")
-                    
-                    current_start = ((comment_results['page'] - 1) * comment_results['limit']) + 1
-                    current_end = min(current_start + len(comment_results['results']) - 1, comment_results['total_results'])
-                    st.caption(f"Showing results {current_start} - {current_end} of {comment_results['total_results']}")
-                    
-                    for comment in comment_results['results']:
-                        with st.container():
-                            st.markdown(
-                                f"""
-                                <div style='padding: 8px; border-left: 2px solid #ccc;'>
-                                    <strong>u/{comment['author']}</strong><br>
-                                    <i>Score: {comment['score']} | Posted on: {comment['formatted_date']}</i>
-                                    <p>{comment['body']}</p>
-                                    <a href="/Post_View?post_id={comment['submission_id']}&comment_id={comment['id']}">
-                                        View Full Discussion
-                                    </a>
-                                </div>
-                                """,
-                                unsafe_allow_html=True
-                            )
-                            st.divider()
-                else:
-                    st.info("No comments found matching your search.")
+
+        # Display results
+        if post_results and post_results.get('results'):
+            st.header(f"Posts ({post_results['total_results']} total)")
+            if search_type == "everything":
+                st.caption(f"Sorted by: {post_sort}")
+            else:
+                st.caption(f"Sorted by: {sort_by}")
+            
+            current_start = ((post_results['page'] - 1) * post_results['limit']) + 1
+            current_end = min(current_start + len(post_results['results']) - 1, post_results['total_results'])
+            st.caption(f"Showing results {current_start} - {current_end} of {post_results['total_results']}")
+            
+            for post in post_results['results']:
+                with st.container():
+                    st.markdown(f"### {post['title']}")
+                    st.markdown(
+                        f"Posted by u/{post['author']} | "
+                        f"Score: {post.get('score', 'N/A')} | "  # Handle possible NULL values
+                        f"Comments: {post.get('num_comments', 'N/A')} | "  # Handle possible NULL values
+                        f"Posted on: {post['formatted_date']}"
+                    )
+                    with st.expander("Show Content"):
+                        st.write(post['selftext'])
+                    st.divider()
+        else:
+            st.info("No posts found matching your search.")
+
+        if comment_results and comment_results.get('results'):
+            st.header(f"Comments ({comment_results['total_results']} total)")
+            if search_type == "everything":
+                st.caption(f"Sorted by: {comment_sort}")
+            else:
+                st.caption(f"Sorted by: {sort_by}")
+            
+            current_start = ((comment_results['page'] - 1) * comment_results['limit']) + 1
+            current_end = min(current_start + len(comment_results['results']) - 1, comment_results['total_results'])
+            st.caption(f"Showing results {current_start} - {current_end} of {comment_results['total_results']}")
+            
+            for comment in comment_results['results']:
+                with st.container():
+                    st.markdown(
+                        f"""
+                        <div style='padding: 8px; border-left: 2px solid #ccc;'>
+                            <strong>u/{comment['author']}</strong><br>
+                            <i>Score: {comment['score']} | Posted on: {comment['formatted_date']}</i>
+                            <p>{comment['body']}</p>
+                            <a href="/Post_View?post_id={comment['submission_id']}&comment_id={comment['id']}">
+                                View Full Discussion
+                            </a>
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                    )
+                    st.divider()
+        else:
+            st.info("No comments found matching your search.")
 
         # Pagination controls
         if (post_results and post_results.get('results')) or (comment_results and comment_results.get('results')):
