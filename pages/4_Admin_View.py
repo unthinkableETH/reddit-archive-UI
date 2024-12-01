@@ -72,6 +72,42 @@ def check_table_stats():
     except Exception as e:
         st.error(f"Error checking table stats: {str(e)}")
 
+def check_search_vector():
+    """Check search vector structure"""
+    structure_query = """
+    SELECT 
+        a.attname as column_name,
+        pg_catalog.format_type(a.atttypid, a.atttypmod) as data_type
+    FROM pg_catalog.pg_attribute a
+    WHERE a.attrelid = 'submissions'::regclass
+        AND a.attname = 'search_vector'
+        AND NOT a.attisdropped;
+    """
+    
+    sample_query = """
+    SELECT 
+        id,
+        title,
+        search_vector::text
+    FROM submissions
+    LIMIT 3;
+    """
+    
+    try:
+        st.subheader("Search Vector Structure")
+        structure = execute_query(structure_query)
+        if structure:
+            st.dataframe(structure)
+            
+        st.subheader("Sample Search Vectors")
+        samples = execute_query(sample_query)
+        if samples:
+            for sample in samples:
+                with st.expander(f"Post: {sample['title'][:50]}..."):
+                    st.code(sample['search_vector'], language='text')
+    except Exception as e:
+        st.error(f"Error checking search vector: {str(e)}")
+
 # Database Stats Section
 col1, col2 = st.columns(2)
 
@@ -110,3 +146,6 @@ with st.expander("Add Text Search Indexes"):
             
         except Exception as e:
             st.error(f"Error creating indexes: {str(e)}")
+
+if st.button("Check Search Vector"):
+    check_search_vector()
