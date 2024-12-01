@@ -36,7 +36,7 @@ def search_api_posts(query: str, sort: str, search_type: str = "title_body", pag
         response = requests.get(
             f"{API_BASE_URL}/api/search/posts",
             params=params,
-            timeout=15
+            timeout=30
         )
         
         if response.status_code != 200:
@@ -46,7 +46,7 @@ def search_api_posts(query: str, sort: str, search_type: str = "title_body", pag
         return response.json()
         
     except requests.Timeout:
-        st.error("Search took too long. Please try a more specific search term.")
+        st.error("Search took too long. Please try adding a date range or using more specific search terms.")
         return None
     except requests.RequestException as e:
         st.error(f"API Error: {str(e)}")
