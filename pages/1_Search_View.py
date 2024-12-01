@@ -17,6 +17,16 @@ st.title("Search RepLadies Archive")
 # API endpoint constants
 API_BASE_URL = "https://m6njm571hh.execute-api.us-east-2.amazonaws.com"
 
+def inject_scroll_to_top():
+    st.markdown(
+        """
+        <script>
+            window.scrollTo(0, 0);
+        </script>
+        """,
+        unsafe_allow_html=True
+    )
+
 def search_api_posts(query: str, sort: str, search_type: str = "title_body", page: int = 1, limit: int = 20, start_date=None, end_date=None):
     """Search posts using the API"""
     try:
@@ -303,14 +313,18 @@ if search_query:
             with col1:
                 if st.session_state.get('page', 1) > 1:
                     if st.button("← Previous"):
-                        set_page_and_scroll(st.session_state.get('page', 1) - 1)
+                        st.session_state.page = st.session_state.get('page', 1) - 1
+                        inject_scroll_to_top()
+                        st.rerun()
             with col2:
                 st.write(f"Page {st.session_state.get('page', 1)}")
             with col3:
                 if ((post_results and len(post_results['results']) == post_results['limit']) or 
                     (comment_results and len(comment_results['results']) == comment_results['limit'])):
                     if st.button("Next →"):
-                        set_page_and_scroll(st.session_state.get('page', 1) + 1)
+                        st.session_state.page = st.session_state.get('page', 1) + 1
+                        inject_scroll_to_top()
+                        st.rerun()
 
     except Exception as e:
         st.error(f"Search error: {str(e)}")
