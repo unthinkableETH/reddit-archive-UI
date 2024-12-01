@@ -55,29 +55,27 @@ with st.sidebar:
         help="Fast Search uses an optimized API but only searches comments"
     )
     
-    if search_method == "Standard":
-        search_type = st.radio(
-            "Search in:", 
-            ["post_title", "post_body", "comments", "everything"],
-            format_func=lambda x: {
-                "post_title": "Post Titles",
-                "post_body": "Post Body Text",
-                "comments": "Comments Only",
-                "everything": "Everything ℹ️"
-            }[x]
-        )
+    search_type = st.radio(
+        "Search in:", 
+        ["post_title", "post_body", "comments", "everything"],
+        format_func=lambda x: {
+            "post_title": "Post Titles",
+            "post_body": "Post Body Text",
+            "comments": "Comments Only",
+            "everything": "Everything ℹ️"
+        }[x]
+    )
     
     exact_match = st.toggle("Exact match", value=False)
     highlight_enabled = st.toggle("Highlight search terms", value=True)
     
     sort_by = st.selectbox(
-        "Sort results by", 
-        ["most_upvotes", "newest", "oldest", "most_comments"],
+        "Sort by:",
+        ["most_upvotes", "newest", "oldest"],
         format_func=lambda x: {
             "most_upvotes": "Most Upvotes",
-            "newest": "Newest",
-            "oldest": "Oldest",
-            "most_comments": "Most Comments"
+            "newest": "Newest First",
+            "oldest": "Oldest First"
         }[x]
     )
     
