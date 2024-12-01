@@ -33,6 +33,9 @@ def search_api_posts(query: str, sort: str, search_type: str = "title_body", pag
         if isinstance(end_date, (datetime, date)):
             params["end_date"] = end_date.strftime("%Y-%m-%d")
             
+        # Debug info
+        st.caption(f"Debug: Using dates - start: {params.get('start_date')}, end: {params.get('end_date')}")
+            
         response = requests.get(
             f"{API_BASE_URL}/api/search/posts",
             params=params,
