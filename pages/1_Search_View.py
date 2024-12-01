@@ -2,6 +2,7 @@ import streamlit as st
 import requests
 from utils import format_date, DARK_THEME_CSS
 from datetime import datetime, date
+from streamlit.runtime.scriptrunner import get_script_run_ctx
 
 st.set_page_config(
     page_title="Search RepLadies Archive",
@@ -104,6 +105,18 @@ def search_api_comments(query: str, sort: str, page: int = 1, limit: int = 20, s
     except requests.RequestException as e:
         st.error(f"API Error: {str(e)}")
         return None
+
+# Add this function to handle scrolling
+def set_page_and_scroll(new_page):
+    st.session_state.page = new_page
+    # Force scroll to top by setting query params
+    ctx = get_script_run_ctx()
+    if ctx is not None:
+        st.experimental_set_query_params(
+            page=new_page,
+            _scroll_top=True  # This will force a scroll to top
+        )
+    st.rerun()
 
 # Sidebar controls
 with st.sidebar:
@@ -290,16 +303,14 @@ if search_query:
             with col1:
                 if st.session_state.get('page', 1) > 1:
                     if st.button("← Previous"):
-                        st.session_state.page = st.session_state.get('page', 1) - 1
-                        st.rerun()
+                        set_page_and_scroll(st.session_state.get('page', 1) - 1)
             with col2:
                 st.write(f"Page {st.session_state.get('page', 1)}")
             with col3:
                 if ((post_results and len(post_results['results']) == post_results['limit']) or 
                     (comment_results and len(comment_results['results']) == comment_results['limit'])):
                     if st.button("Next →"):
-                        st.session_state.page = st.session_state.get('page', 1) + 1
-                        st.rerun()
+                        set_page_and_scroll(st.session_state.get('page', 1) + 1)
 
     except Exception as e:
         st.error(f"Search error: {str(e)}")
