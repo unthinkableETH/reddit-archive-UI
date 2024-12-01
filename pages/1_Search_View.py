@@ -223,6 +223,21 @@ with st.sidebar:
 # Main search interface
 search_query = st.text_input("Enter your search terms", key="search_box")
 
+# Add this near your search input, before the search box
+with st.expander("💡 Search Tips - Boolean Operators (AND, OR, NOT)"):
+    st.markdown("""
+        Use Boolean Operators to refine your search:
+        - `Chanel AND quality` (finds posts with both words)
+        - `Chanel NOT caviar` (excludes posts with 'caviar')
+        - `Chanel OR Hermes` (finds posts with either word)
+        
+        [Learn more about Boolean search tips here](https://www.reddit.com/r/WagoonLadies/comments/13w4wbc/tips_and_tricks_time_to_learn_something_new/)
+    """)
+
+# You could also add a small hint below the search box
+if not search_query:
+    st.caption("Pro tip: Try using AND, OR, NOT to refine your search")
+
 if search_query:
     try:
         post_results = None
