@@ -27,14 +27,15 @@ def search_api_posts(query: str, sort: str, search_type: str = "title_body", pag
             "limit": limit
         }
         
-        # Only add date parameters if they're valid dates
+        # Add dates independently if they exist
         if isinstance(start_date, (datetime, date)):
             params["start_date"] = start_date.strftime("%Y-%m-%d")
         if isinstance(end_date, (datetime, date)):
             params["end_date"] = end_date.strftime("%Y-%m-%d")
             
         # Debug info
-        st.caption(f"Debug: Using dates - start: {params.get('start_date')}, end: {params.get('end_date')}")
+        if params.get("start_date") or params.get("end_date"):
+            st.caption(f"Date filter: {params.get('start_date', 'any')} to {params.get('end_date', 'any')}")
             
         response = requests.get(
             f"{API_BASE_URL}/api/search/posts",
@@ -136,14 +137,16 @@ with st.sidebar:
             "From",
             value=None,
             min_value=datetime(2015, 1, 1).date(),
-            max_value=datetime.now().date()
+            max_value=datetime.now().date(),
+            help="Optional: Filter posts from this date"
         )
     with col2:
         end_date = st.date_input(
             "To",
             value=None,
             min_value=datetime(2015, 1, 1).date(),
-            max_value=datetime.now().date()
+            max_value=datetime.now().date(),
+            help="Optional: Filter posts up to this date"
         )
 
 # Main search interface
