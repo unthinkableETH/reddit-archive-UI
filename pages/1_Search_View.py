@@ -28,10 +28,18 @@ def search_api_comments(query: str, sort: str, page: int = 1, limit: int = 20):
                 "page": page,
                 "limit": limit
             },
-            timeout=10  # Add timeout to prevent hanging
+            timeout=15  # Increased from 10 to 15 seconds
         )
-        response.raise_for_status()
+        
+        if response.status_code != 200:
+            st.error(f"API Error ({response.status_code}): {response.text}")
+            return None
+            
         return response.json()
+        
+    except requests.Timeout:
+        st.error("Search took too long. Please try a more specific search term.")
+        return None
     except requests.RequestException as e:
         st.error(f"API Error: {str(e)}")
         return None
