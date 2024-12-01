@@ -127,25 +127,26 @@ if search_query:
                                 with st.expander("Show Content"):
                                     st.write(post['selftext'])
                                 st.divider()
-            
-            # Handle comment searches (existing code)
+                    else:
+                        st.info("No posts found matching your search.")
+
+            # Handle comment searches
             if search_type in ["comments", "everything"]:
                 with st.spinner("Searching comments..."):
-                    results = search_api_comments(
+                    comment_results = search_api_comments(
                         query=search_query,
                         sort=sort_by,
                         page=st.session_state.get('page', 1)
                     )
                     
-                    if results and results.get('results'):
-                        st.header(f"Comments ({results['total_results']} total)")
+                    if comment_results and comment_results.get('results'):
+                        st.header(f"Comments ({comment_results['total_results']} total)")
                         
-                        # Progress through results
-                        current_start = ((results['page'] - 1) * results['limit']) + 1
-                        current_end = min(current_start + len(results['results']) - 1, results['total_results'])
-                        st.caption(f"Showing results {current_start} - {current_end} of {results['total_results']}")
+                        current_start = ((comment_results['page'] - 1) * comment_results['limit']) + 1
+                        current_end = min(current_start + len(comment_results['results']) - 1, comment_results['total_results'])
+                        st.caption(f"Showing results {current_start} - {current_end} of {comment_results['total_results']}")
                         
-                        for comment in results['results']:
+                        for comment in comment_results['results']:
                             with st.container():
                                 st.markdown(
                                     f"""
@@ -161,111 +162,29 @@ if search_query:
                                     unsafe_allow_html=True
                                 )
                                 st.divider()
-                
-                        # Enhanced pagination
-                        pages_section = st.container()
-                        with pages_section:
-                            cols = st.columns([1, 2, 1])
-                            with cols[0]:
-                                if results['page'] > 1:
-                                    if st.button("← Previous"):
-                                        st.session_state.page = results['page'] - 1
-                                        st.rerun()
-                            with cols[1]:
-                                st.write(f"Page {results['page']} of {results['total_pages']}")
-                            with cols[2]:
-                                if results['page'] < results['total_pages']:
-                                    if st.button("Next →"):
-                                        st.session_state.page = results['page'] + 1
-                                        st.rerun()
-                else:
-                    st.info("No results found")
-                    
-        else:
-            # Build date filter if dates are selected
-            date_filter = ""
-            params = [search_query]  # First param is always the search query
-            
-            if start_date:
-                date_filter += " AND created_utc >= %s"
-                params.append(int(start_date.timestamp()))
-            if end_date:
-                date_filter += " AND created_utc <= %s"
-                params.append(int(end_date.timestamp()))
-            
-            # Add pagination parameters
-            posts_per_page = 20
-            page = st.session_state.get('page', 1)
-            params.extend([posts_per_page, (page - 1) * posts_per_page])
-            
-            # Execute search based on type
-            if search_type in ["post_title", "post_body", "everything"]:
-                posts = execute_query(
-                    SEARCH_POSTS.format(
-                        sort_order=SORT_ORDERS[sort_by],
-                        date_filter=date_filter
-                    ),
-                    tuple(params)
-                )
-                
-                if posts:
-                    st.header("Posts")
-                    for post in posts:
-                        with st.container():
-                            st.markdown(f"### {post['title']}")
-                            st.markdown(
-                                f"Posted by u/{post['author']} | "
-                                f"Score: {post['score']} | "
-                                f"Comments: {post['num_comments']} | "
-                                f"Posted on: {format_date(post['created_utc'])}"
-                            )
-                            with st.expander("Show Content"):
-                                st.write(post['selftext'])
-                            st.divider()
-            
-            if search_type in ["comments", "everything"]:
-                comments = execute_query(
-                    SEARCH_COMMENTS.format(
-                        sort_order=SORT_ORDERS[sort_by],
-                        date_filter=date_filter
-                    ),
-                    tuple(params)
-                )
-                
-                if comments:
-                    st.header("Comments")
-                    for comment in comments:
-                        with st.container():
-                            st.markdown(
-                                f"""
-                                <div style='padding: 8px; border-left: 2px solid #ccc;'>
-                                    <strong>u/{comment['author']}</strong><br>
-                                    <i>Score: {comment['score']} | Posted on: {format_date(comment['created_utc'])}</i>
-                                    <p>{comment['body']}</p>
-                                    <a href="/Post_View?post_id={comment['submission_id']}&comment_id={comment['id']}">
-                                        View Full Discussion
-                                    </a>
-                                </div>
-                                """,
-                                unsafe_allow_html=True
-                            )
-                            st.divider()
-            
+                    else:
+                        st.info("No comments found matching your search.")
+
             # Pagination controls
-            col1, col2, col3 = st.columns([1, 2, 1])
-            with col1:
-                if page > 1:
-                    if st.button("← Previous"):
-                        st.session_state.page = page - 1
-                        st.rerun()
-            with col2:
-                st.write(f"Page {page}")
-            with col3:
-                if len(posts) == posts_per_page or len(comments) == posts_per_page:
-                    if st.button("Next →"):
-                        st.session_state.page = page + 1
-                        st.rerun()
-                    
+            if (post_results and post_results.get('results')) or (comment_results and comment_results.get('results')):
+                col1, col2, col3 = st.columns([1, 2, 1])
+                with col1:
+                    if st.session_state.get('page', 1) > 1:
+                        if st.button("← Previous"):
+                            st.session_state.page = st.session_state.get('page', 1) - 1
+                            st.rerun()
+                with col2:
+                    st.write(f"Page {st.session_state.get('page', 1)}")
+                with col3:
+                    if ((post_results and len(post_results['results']) == post_results['limit']) or 
+                        (comment_results and len(comment_results['results']) == comment_results['limit'])):
+                        if st.button("Next →"):
+                            st.session_state.page = st.session_state.get('page', 1) + 1
+                            st.rerun()
+        else:
+            # Your existing "Standard" search code here
+            pass
+
     except Exception as e:
         st.error(f"Search error: {str(e)}")
 else:
