@@ -21,17 +21,30 @@ API_BASE_URL = "https://m6njm571hh.execute-api.us-east-2.amazonaws.com"
 def scroll_to_top():
     js = '''
     <script>
-        var body = window.document.querySelector("body");
-        body.scrollTop = 0;
-        window.scrollTo(0, 0);
-        
-        // For Streamlit-specific elements
-        window.parent.document.querySelector('.main').scrollTo(0, 0);
-        window.parent.document.querySelector('section.main').scrollTo(0, 0);
+        // Attempt to scroll the main content area
+        var main = window.parent.document.querySelector('section[data-testid="stSidebar"] + section');
+        if (main) {
+            main.scrollTo({top: 0, behavior: 'smooth'});
+        }
+
+        // Attempt to scroll the iframe content
+        window.scrollTo({top: 0, behavior: 'smooth'});
+
+        // Attempt to scroll the app container
+        var appView = window.parent.document.querySelector('.main');
+        if (appView) {
+            appView.scrollTo({top: 0, behavior: 'smooth'});
+        }
+
+        // Force scroll after a small delay to ensure it works
+        setTimeout(function() {
+            window.scrollTo(0, 0);
+            if (main) main.scrollTo(0, 0);
+            if (appView) appView.scrollTo(0, 0);
+        }, 100);
     </script>
     '''
     st.components.v1.html(js, height=0)
-    time.sleep(0.1)  # Small delay to ensure scroll executes
 
 def search_api_posts(query: str, sort: str, search_type: str = "title_body", page: int = 1, limit: int = 20, start_date=None, end_date=None):
     """Search posts using the API"""
@@ -319,6 +332,7 @@ if search_query:
                     if st.button("← Previous"):
                         scroll_to_top()
                         st.session_state.page = st.session_state.get('page', 1) - 1
+                        time.sleep(0.2)  # Give scroll time to execute
                         st.rerun()
             with col2:
                 st.write(f"Page {st.session_state.get('page', 1)}")
@@ -328,6 +342,7 @@ if search_query:
                     if st.button("Next →"):
                         scroll_to_top()
                         st.session_state.page = st.session_state.get('page', 1) + 1
+                        time.sleep(0.2)  # Give scroll time to execute
                         st.rerun()
 
     except Exception as e:
