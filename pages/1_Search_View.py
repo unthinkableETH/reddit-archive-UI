@@ -93,23 +93,21 @@ with st.sidebar:
         "Search in:", 
         ["post_title", "post_body", "comments", "everything"],
         format_func=lambda x: {
-            "post_title": "Post Titles",
-            "post_body": "Post Body Text",
+            "post_title": "Post Titles Only",
+            "post_body": "Post Content Only",
             "comments": "Comments Only",
-            "everything": "Everything ℹ️"
+            "everything": "Everything (Posts + Comments)"
         }[x]
     )
     
-    exact_match = st.toggle("Exact match", value=False)
-    highlight_enabled = st.toggle("Highlight search terms", value=True)
-    
     sort_by = st.selectbox(
         "Sort by:",
-        ["most_upvotes", "newest", "oldest"],
+        ["most_upvotes", "newest", "oldest", "most_comments"],
         format_func=lambda x: {
             "most_upvotes": "Most Upvotes",
             "newest": "Newest First",
-            "oldest": "Oldest First"
+            "oldest": "Oldest First",
+            "most_comments": "Most Comments"
         }[x]
     )
     
