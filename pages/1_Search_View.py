@@ -63,28 +63,43 @@ def search_api_posts(query: str, sort: str, search_type: str = "title_body", pag
         st.error(f"API Error: {str(e)}")
         return None
 
-def search_api_comments(query: str, sort: str, page: int = 1, limit: int = 20):
+def search_api_comments(query: str, sort: str, page: int = 1, limit: int = 20, start_date=None, end_date=None):
     """Search comments using the API"""
     try:
+        params = {
+            "query": query,
+            "sort": sort,
+            "page": page,
+            "limit": limit
+        }
+        
+        # Add dates independently if they exist
+        if isinstance(start_date, (datetime, date)):
+            params["start_date"] = start_date.strftime("%Y-%m-%d")
+        if isinstance(end_date, (datetime, date)):
+            params["end_date"] = end_date.strftime("%Y-%m-%d")
+            
         response = requests.get(
             f"{API_BASE_URL}/api/search/comments",
-            params={
-                "query": query,
-                "sort": sort,
-                "page": page,
-                "limit": limit
-            },
-            timeout=15
+            params=params,
+            timeout=30
         )
         
         if response.status_code != 200:
-            st.error(f"API Error ({response.status_code}): {response.text}")
+            error_msg = response.text
+            try:
+                error_data = response.json()
+                if 'detail' in error_data:
+                    error_msg = error_data['detail']
+            except:
+                pass
+            st.error(f"API Error ({response.status_code}): {error_msg}")
             return None
             
         return response.json()
         
     except requests.Timeout:
-        st.error("Search took too long. Please try a more specific search term.")
+        st.error("Search took too long. Please try adding a date range or using more specific search terms.")
         return None
     except requests.RequestException as e:
         st.error(f"API Error: {str(e)}")
@@ -204,7 +219,9 @@ if search_query:
                 comment_results = search_api_comments(
                     query=search_query,
                     sort=sort_by,
-                    page=st.session_state.get('page', 1)
+                    page=st.session_state.get('page', 1),
+                    start_date=start_date,
+                    end_date=end_date
                 )
                 
                 if comment_results and comment_results.get('results'):
