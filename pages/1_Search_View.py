@@ -17,18 +17,19 @@ st.title("Search RepLadies Archive")
 # Add API endpoint constants
 API_BASE_URL = "https://m6njm571hh.execute-api.us-east-2.amazonaws.com"
 
-def search_api_comments(query: str, sort: str, page: int = 1, limit: int = 20):
-    """Search comments using the new API"""
+def search_api_posts(query: str, sort: str, search_type: str = "title_body", page: int = 1, limit: int = 20):
+    """Search posts using the API"""
     try:
         response = requests.get(
-            f"{API_BASE_URL}/api/search/comments",
+            f"{API_BASE_URL}/api/search/posts",
             params={
                 "query": query,
                 "sort": sort,
+                "search_type": search_type,
                 "page": page,
                 "limit": limit
             },
-            timeout=15  # Increased from 10 to 15 seconds
+            timeout=15
         )
         
         if response.status_code != 200:
@@ -91,54 +92,92 @@ search_query = st.text_input("Enter your search terms", key="search_box")
 if search_query:
     try:
         if search_method == "Fast Search (Beta)":
-            with st.spinner("Searching comments..."):
-                results = search_api_comments(
-                    query=search_query,
-                    sort=sort_by,
-                    page=st.session_state.get('page', 1)
-                )
+            # Handle post searches
+            if search_type in ["post_title", "post_body", "everything"]:
+                api_search_type = {
+                    "post_title": "title",
+                    "post_body": "body",
+                    "everything": "title_body"
+                }[search_type]
                 
-                if results and results.get('results'):
-                    st.header(f"Comments ({results['total_results']} total)")
+                with st.spinner("Searching posts..."):
+                    post_results = search_api_posts(
+                        query=search_query,
+                        sort=sort_by,
+                        search_type=api_search_type,
+                        page=st.session_state.get('page', 1)
+                    )
                     
-                    # Progress through results
-                    current_start = ((results['page'] - 1) * results['limit']) + 1
-                    current_end = min(current_start + len(results['results']) - 1, results['total_results'])
-                    st.caption(f"Showing results {current_start} - {current_end} of {results['total_results']}")
+                    if post_results and post_results.get('results'):
+                        st.header(f"Posts ({post_results['total_results']} total)")
+                        
+                        current_start = ((post_results['page'] - 1) * post_results['limit']) + 1
+                        current_end = min(current_start + len(post_results['results']) - 1, post_results['total_results'])
+                        st.caption(f"Showing results {current_start} - {current_end} of {post_results['total_results']}")
+                        
+                        for post in post_results['results']:
+                            with st.container():
+                                st.markdown(f"### {post['title']}")
+                                st.markdown(
+                                    f"Posted by u/{post['author']} | "
+                                    f"Score: {post['score']} | "
+                                    f"Comments: {post['num_comments']} | "
+                                    f"Posted on: {post['formatted_date']}"
+                                )
+                                with st.expander("Show Content"):
+                                    st.write(post['selftext'])
+                                st.divider()
+            
+            # Handle comment searches (existing code)
+            if search_type in ["comments", "everything"]:
+                with st.spinner("Searching comments..."):
+                    results = search_api_comments(
+                        query=search_query,
+                        sort=sort_by,
+                        page=st.session_state.get('page', 1)
+                    )
                     
-                    for comment in results['results']:
-                        with st.container():
-                            st.markdown(
-                                f"""
-                                <div style='padding: 8px; border-left: 2px solid #ccc;'>
-                                    <strong>u/{comment['author']}</strong><br>
-                                    <i>Score: {comment['score']} | Posted on: {comment['formatted_date']}</i>
-                                    <p>{comment['body']}</p>
-                                    <a href="/Post_View?post_id={comment['submission_id']}&comment_id={comment['id']}">
-                                        View Full Discussion
-                                    </a>
-                                </div>
-                                """,
-                                unsafe_allow_html=True
-                            )
-                            st.divider()
-                    
-                    # Enhanced pagination
-                    pages_section = st.container()
-                    with pages_section:
-                        cols = st.columns([1, 2, 1])
-                        with cols[0]:
-                            if results['page'] > 1:
-                                if st.button("← Previous"):
-                                    st.session_state.page = results['page'] - 1
-                                    st.rerun()
-                        with cols[1]:
-                            st.write(f"Page {results['page']} of {results['total_pages']}")
-                        with cols[2]:
-                            if results['page'] < results['total_pages']:
-                                if st.button("Next →"):
-                                    st.session_state.page = results['page'] + 1
-                                    st.rerun()
+                    if results and results.get('results'):
+                        st.header(f"Comments ({results['total_results']} total)")
+                        
+                        # Progress through results
+                        current_start = ((results['page'] - 1) * results['limit']) + 1
+                        current_end = min(current_start + len(results['results']) - 1, results['total_results'])
+                        st.caption(f"Showing results {current_start} - {current_end} of {results['total_results']}")
+                        
+                        for comment in results['results']:
+                            with st.container():
+                                st.markdown(
+                                    f"""
+                                    <div style='padding: 8px; border-left: 2px solid #ccc;'>
+                                        <strong>u/{comment['author']}</strong><br>
+                                        <i>Score: {comment['score']} | Posted on: {comment['formatted_date']}</i>
+                                        <p>{comment['body']}</p>
+                                        <a href="/Post_View?post_id={comment['submission_id']}&comment_id={comment['id']}">
+                                            View Full Discussion
+                                        </a>
+                                    </div>
+                                    """,
+                                    unsafe_allow_html=True
+                                )
+                                st.divider()
+                
+                        # Enhanced pagination
+                        pages_section = st.container()
+                        with pages_section:
+                            cols = st.columns([1, 2, 1])
+                            with cols[0]:
+                                if results['page'] > 1:
+                                    if st.button("← Previous"):
+                                        st.session_state.page = results['page'] - 1
+                                        st.rerun()
+                            with cols[1]:
+                                st.write(f"Page {results['page']} of {results['total_pages']}")
+                            with cols[2]:
+                                if results['page'] < results['total_pages']:
+                                    if st.button("Next →"):
+                                        st.session_state.page = results['page'] + 1
+                                        st.rerun()
                 else:
                     st.info("No results found")
                     
