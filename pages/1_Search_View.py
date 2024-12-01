@@ -340,24 +340,46 @@ if search_query:
                 st.info("No posts or comments found matching your search.")
 
         # Pagination controls
-        if (post_results and post_results.get('results')) or (comment_results and comment_results.get('results')):
+        if search_query and (post_results or comment_results):
             col1, col2, col3 = st.columns([1, 2, 1])
+            
+            # Get total pages for both result types
+            post_total_pages = post_results.get('total_pages', 0) if post_results else 0
+            comment_total_pages = comment_results.get('total_pages', 0) if comment_results else 0
+            max_total_pages = max(post_total_pages, comment_total_pages)
+            current_page = st.session_state.get('page', 1)
+            
             with col1:
-                if st.session_state.get('page', 1) > 1:
+                if current_page > 1:
                     if st.button("← Previous"):
                         scroll_to_top()
-                        st.session_state.page = st.session_state.get('page', 1) - 1
-                        time.sleep(0.2)  # Give scroll time to execute
+                        st.session_state.page = current_page - 1
+                        time.sleep(0.2)
                         st.rerun()
+            
             with col2:
-                st.write(f"Page {st.session_state.get('page', 1)}")
+                if max_total_pages > 0:
+                    st.write(f"Page {current_page} of {max_total_pages}")
+                else:
+                    st.write(f"Page {current_page}")
+            
             with col3:
-                if ((post_results and len(post_results['results']) == post_results['limit']) or 
-                    (comment_results and len(comment_results['results']) == comment_results['limit'])):
+                show_next = False
+                
+                if search_type in ["post_title", "post_body"]:
+                    show_next = should_show_next_button(post_results)
+                elif search_type == "comments":
+                    show_next = should_show_next_button(comment_results)
+                else:  # everything
+                    # Show next if either posts or comments have more pages
+                    show_next = (should_show_next_button(post_results) or 
+                                should_show_next_button(comment_results))
+                
+                if show_next:
                     if st.button("Next →"):
                         scroll_to_top()
-                        st.session_state.page = st.session_state.get('page', 1) + 1
-                        time.sleep(0.2)  # Give scroll time to execute
+                        st.session_state.page = current_page + 1
+                        time.sleep(0.2)
                         st.rerun()
 
     except Exception as e:
