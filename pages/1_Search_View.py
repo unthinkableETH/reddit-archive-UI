@@ -100,9 +100,16 @@ with st.sidebar:
         }[x]
     )
     
+    # Only show most_comments option for post searches
+    available_sort_options = (
+        ["most_upvotes", "newest", "oldest", "most_comments"]
+        if search_type in ["post_title", "post_body", "everything"]
+        else ["most_upvotes", "newest", "oldest"]
+    )
+    
     sort_by = st.selectbox(
         "Sort by:",
-        ["most_upvotes", "newest", "oldest", "most_comments"],
+        available_sort_options,
         format_func=lambda x: {
             "most_upvotes": "Most Upvotes",
             "newest": "Newest First",
@@ -157,6 +164,7 @@ if search_query:
                 
                 if post_results and post_results.get('results'):
                     st.header(f"Posts ({post_results['total_results']} total)")
+                    st.caption(f"Sorted by: {sort_by}")
                     
                     current_start = ((post_results['page'] - 1) * post_results['limit']) + 1
                     current_end = min(current_start + len(post_results['results']) - 1, post_results['total_results'])
@@ -167,8 +175,8 @@ if search_query:
                             st.markdown(f"### {post['title']}")
                             st.markdown(
                                 f"Posted by u/{post['author']} | "
-                                f"Score: {post['score']} | "
-                                f"Comments: {post['num_comments']} | "
+                                f"Score: {post.get('score', 'N/A')} | "  # Handle possible NULL values
+                                f"Comments: {post.get('num_comments', 'N/A')} | "  # Handle possible NULL values
                                 f"Posted on: {post['formatted_date']}"
                             )
                             with st.expander("Show Content"):
