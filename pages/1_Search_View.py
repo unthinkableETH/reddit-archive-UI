@@ -3,6 +3,7 @@ import requests
 from utils import format_date, DARK_THEME_CSS
 from datetime import datetime, date
 from streamlit.runtime.scriptrunner import get_script_run_ctx
+import time
 
 st.set_page_config(
     page_title="Search RepLadies Archive",
@@ -17,15 +18,20 @@ st.title("Search RepLadies Archive")
 # API endpoint constants
 API_BASE_URL = "https://m6njm571hh.execute-api.us-east-2.amazonaws.com"
 
-def inject_scroll_to_top():
-    st.markdown(
-        """
-        <script>
-            window.scrollTo(0, 0);
-        </script>
-        """,
-        unsafe_allow_html=True
-    )
+def scroll_to_top():
+    js = '''
+    <script>
+        var body = window.document.querySelector("body");
+        body.scrollTop = 0;
+        window.scrollTo(0, 0);
+        
+        // For Streamlit-specific elements
+        window.parent.document.querySelector('.main').scrollTo(0, 0);
+        window.parent.document.querySelector('section.main').scrollTo(0, 0);
+    </script>
+    '''
+    st.components.v1.html(js, height=0)
+    time.sleep(0.1)  # Small delay to ensure scroll executes
 
 def search_api_posts(query: str, sort: str, search_type: str = "title_body", page: int = 1, limit: int = 20, start_date=None, end_date=None):
     """Search posts using the API"""
@@ -115,18 +121,6 @@ def search_api_comments(query: str, sort: str, page: int = 1, limit: int = 20, s
     except requests.RequestException as e:
         st.error(f"API Error: {str(e)}")
         return None
-
-# Add this function to handle scrolling
-def set_page_and_scroll(new_page):
-    st.session_state.page = new_page
-    # Force scroll to top by setting query params
-    ctx = get_script_run_ctx()
-    if ctx is not None:
-        st.experimental_set_query_params(
-            page=new_page,
-            _scroll_top=True  # This will force a scroll to top
-        )
-    st.rerun()
 
 # Sidebar controls
 with st.sidebar:
@@ -250,62 +244,72 @@ if search_query:
                     end_date=end_date
                 )
 
-        # Display results
-        if post_results and post_results.get('results'):
-            st.header(f"Posts ({post_results['total_results']} total)")
-            if search_type == "everything":
-                st.caption(f"Sorted by: {post_sort}")
-            else:
-                st.caption(f"Sorted by: {sort_by}")
-            
-            current_start = ((post_results['page'] - 1) * post_results['limit']) + 1
-            current_end = min(current_start + len(post_results['results']) - 1, post_results['total_results'])
-            st.caption(f"Showing results {current_start} - {current_end} of {post_results['total_results']}")
-            
-            for post in post_results['results']:
-                with st.container():
-                    st.markdown(f"### {post['title']}")
-                    st.markdown(
-                        f"Posted by u/{post['author']} | "
-                        f"Score: {post.get('score', 'N/A')} | "  # Handle possible NULL values
-                        f"Comments: {post.get('num_comments', 'N/A')} | "  # Handle possible NULL values
-                        f"Posted on: {post['formatted_date']}"
-                    )
-                    with st.expander("Show Content"):
-                        st.write(post['selftext'])
-                    st.divider()
-        else:
-            st.info("No posts found matching your search.")
-
-        if comment_results and comment_results.get('results'):
-            st.header(f"Comments ({comment_results['total_results']} total)")
-            if search_type == "everything":
-                st.caption(f"Sorted by: {comment_sort}")
-            else:
-                st.caption(f"Sorted by: {sort_by}")
-            
-            current_start = ((comment_results['page'] - 1) * comment_results['limit']) + 1
-            current_end = min(current_start + len(comment_results['results']) - 1, comment_results['total_results'])
-            st.caption(f"Showing results {current_start} - {current_end} of {comment_results['total_results']}")
-            
-            for comment in comment_results['results']:
-                with st.container():
-                    st.markdown(
-                        f"""
-                        <div style='padding: 8px; border-left: 2px solid #ccc;'>
-                            <strong>u/{comment['author']}</strong><br>
-                            <i>Score: {comment['score']} | Posted on: {comment['formatted_date']}</i>
-                            <p>{comment['body']}</p>
-                            <a href="/Post_View?post_id={comment['submission_id']}&comment_id={comment['id']}">
-                                View Full Discussion
-                            </a>
-                        </div>
-                        """,
-                        unsafe_allow_html=True
-                    )
-                    st.divider()
-        else:
-            st.info("No comments found matching your search.")
+        # Display results with proper messaging
+        no_results = True
+        
+        if search_type in ["post_title", "post_body", "everything"]:
+            if post_results and post_results.get('results'):
+                no_results = False
+                st.header(f"Posts ({post_results['total_results']} total)")
+                if search_type == "everything":
+                    st.caption(f"Sorted by: {post_sort}")
+                else:
+                    st.caption(f"Sorted by: {sort_by}")
+                
+                current_start = ((post_results['page'] - 1) * post_results['limit']) + 1
+                current_end = min(current_start + len(post_results['results']) - 1, post_results['total_results'])
+                st.caption(f"Showing results {current_start} - {current_end} of {post_results['total_results']}")
+                
+                for post in post_results['results']:
+                    with st.container():
+                        st.markdown(f"### {post['title']}")
+                        st.markdown(
+                            f"Posted by u/{post['author']} | "
+                            f"Score: {post.get('score', 'N/A')} | "  # Handle possible NULL values
+                            f"Comments: {post.get('num_comments', 'N/A')} | "  # Handle possible NULL values
+                            f"Posted on: {post['formatted_date']}"
+                        )
+                        with st.expander("Show Content"):
+                            st.write(post['selftext'])
+                        st.divider()
+        
+        if search_type in ["comments", "everything"]:
+            if comment_results and comment_results.get('results'):
+                no_results = False
+                st.header(f"Comments ({comment_results['total_results']} total)")
+                if search_type == "everything":
+                    st.caption(f"Sorted by: {comment_sort}")
+                else:
+                    st.caption(f"Sorted by: {sort_by}")
+                
+                current_start = ((comment_results['page'] - 1) * comment_results['limit']) + 1
+                current_end = min(current_start + len(comment_results['results']) - 1, comment_results['total_results'])
+                st.caption(f"Showing results {current_start} - {current_end} of {comment_results['total_results']}")
+                
+                for comment in comment_results['results']:
+                    with st.container():
+                        st.markdown(
+                            f"""
+                            <div style='padding: 8px; border-left: 2px solid #ccc;'>
+                                <strong>u/{comment['author']}</strong><br>
+                                <i>Score: {comment['score']} | Posted on: {comment['formatted_date']}</i>
+                                <p>{comment['body']}</p>
+                                <a href="/Post_View?post_id={comment['submission_id']}&comment_id={comment['id']}">
+                                    View Full Discussion
+                                </a>
+                            </div>
+                            """,
+                            unsafe_allow_html=True
+                        )
+                        st.divider()
+        
+        if no_results:
+            if search_type == "comments":
+                st.info("No comments found matching your search.")
+            elif search_type in ["post_title", "post_body"]:
+                st.info("No posts found matching your search.")
+            else:  # everything
+                st.info("No posts or comments found matching your search.")
 
         # Pagination controls
         if (post_results and post_results.get('results')) or (comment_results and comment_results.get('results')):
@@ -313,8 +317,8 @@ if search_query:
             with col1:
                 if st.session_state.get('page', 1) > 1:
                     if st.button("← Previous"):
+                        scroll_to_top()
                         st.session_state.page = st.session_state.get('page', 1) - 1
-                        inject_scroll_to_top()
                         st.rerun()
             with col2:
                 st.write(f"Page {st.session_state.get('page', 1)}")
@@ -322,8 +326,8 @@ if search_query:
                 if ((post_results and len(post_results['results']) == post_results['limit']) or 
                     (comment_results and len(comment_results['results']) == comment_results['limit'])):
                     if st.button("Next →"):
+                        scroll_to_top()
                         st.session_state.page = st.session_state.get('page', 1) + 1
-                        inject_scroll_to_top()
                         st.rerun()
 
     except Exception as e:
