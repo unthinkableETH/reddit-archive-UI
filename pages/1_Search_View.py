@@ -206,7 +206,7 @@ def format_author_link(author):
         return '[deleted]'
     return f"[u/{author}](/Profile_View?author={author})"
 
-def get_preview(text, max_length=200):
+def get_preview(text, max_length=2000):
     """Get a preview of text, cutting at the nearest sentence or word boundary"""
     if len(text) <= max_length:
         return text, False
