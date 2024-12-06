@@ -157,7 +157,7 @@ def format_author_link(author):
     """Format author name as link unless deleted"""
     if author in ['[deleted]', 'deleted', None]:
         return '[deleted]'
-    return f"[u/{author}](https://www.reddit.com/user/{author}){:target='_blank'}"
+    return f"[u/{author}](https://www.reddit.com/user/{author})" + "{:target='_blank'}"
 
 # Sidebar controls
 with st.sidebar:
