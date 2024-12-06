@@ -353,15 +353,18 @@ if search_query:
                 st.caption(f"Showing results {current_start} - {current_end} of {post_results['total_results']}")
                 
                 for post in post_results['results']:
-                    st.subheader(post['title'])  # Title as subheader above expander
-                    with st.expander("Show Post"):  # Clean expander title
-                        author_link = format_author_link(post['author'])
-                        st.markdown(
-                            f"Posted by {author_link} | "
-                            f"Score: {post.get('score', 'N/A')} | "
-                            f"Comments: {post.get('num_comments', 'N/A')} | "
-                            f"Posted on: {post['formatted_date']}"
-                        )
+                    st.subheader(post['title'])  # Title as subheader
+                    
+                    # Post metadata directly under subheader
+                    author_link = format_author_link(post['author'])
+                    st.caption(
+                        f"Posted by {author_link} | "
+                        f"Score: {post.get('score', 0)} | "
+                        f"Comments: {post.get('num_comments', 0)} | "
+                        f"Posted on: {post['formatted_date']}"
+                    )
+                    
+                    with st.expander("Show Post"):
                         st.markdown(post['selftext'])
                         
                         # Add separator and discussion link at bottom
