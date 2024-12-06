@@ -381,10 +381,6 @@ if search_query:
             if post_results and post_results.get('results'):
                 no_results = False
                 st.header(f"Posts ({post_results['total_results']} total)")
-                if search_type == "everything":
-                    st.caption(f"Sorted by: {post_sort}")
-                else:
-                    st.caption(f"Sorted by: {sort_by}")
                 
                 current_start = ((post_results['page'] - 1) * post_results['limit']) + 1
                 current_end = min(current_start + len(post_results['results']) - 1, post_results['total_results'])
@@ -413,10 +409,6 @@ if search_query:
             if comment_results and comment_results.get('results'):
                 no_results = False
                 st.header(f"Comments ({comment_results['total_results']} total)")
-                if search_type == "everything":
-                    st.caption(f"Sorted by: {comment_sort}")
-                else:
-                    st.caption(f"Sorted by: {sort_by}")
                 
                 current_start = ((comment_results['page'] - 1) * comment_results['limit']) + 1
                 current_end = min(current_start + len(comment_results['results']) - 1, comment_results['total_results'])
