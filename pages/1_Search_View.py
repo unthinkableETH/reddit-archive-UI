@@ -157,7 +157,7 @@ def format_author_link(author):
     """Format author name as link unless deleted"""
     if author in ['[deleted]', 'deleted', None]:
         return '[deleted]'
-    return f"[u/{author}](https://www.reddit.com/user/{author})" + "{:target='_blank'}"
+    return f"[u/{author}](https://www.reddit.com/user/{author})"
 
 # Sidebar controls
 with st.sidebar:
@@ -318,19 +318,22 @@ if search_query:
                 st.caption(f"Showing results {current_start} - {current_end} of {post_results['total_results']}")
                 
                 for post in post_results['results']:
-                    with st.container():
+                    with st.expander(f"### {post['title']}", expanded=False):
                         author_link = format_author_link(post['author'])
-                        st.markdown(f"### {post['title']}")
                         st.markdown(
                             f"Posted by {author_link} | "
-                            f"Score: {post.get('score', 'N/A')} | "  # Handle possible NULL values
-                            f"Comments: {post.get('num_comments', 'N/A')} | "  # Handle possible NULL values
+                            f"Score: {post.get('score', 'N/A')} | "
+                            f"Comments: {post.get('num_comments', 'N/A')} | "
                             f"Posted on: {post['formatted_date']}"
                         )
-                        with st.expander("Show Content"):
-                            st.write(post['selftext'])
-                        st.divider()
-                        st.markdown(f"[View full discussion →](https://www.reddit.com/r/RepLadies/comments/{post['id']}/){:target='_blank'}")
+                        st.markdown(post['selftext'])
+                        
+                        # Add separator and discussion link at bottom
+                        st.markdown("---")
+                        col1, col2 = st.columns([5,1])
+                        with col2:
+                            discussion_url = f"https://www.reddit.com/r/RepLadies/comments/{post['id']}/"
+                            st.markdown(f"[💬 View Discussion]({discussion_url})")
         
         if search_type in ["comments", "everything"]:
             if comment_results and comment_results.get('results'):
@@ -346,15 +349,14 @@ if search_query:
                 st.caption(f"Showing results {current_start} - {current_end} of {comment_results['total_results']}")
                 
                 for comment in comment_results['results']:
-                    with st.container():
-                        author_link = format_author_link(comment['author'])
-                        st.markdown(f"Comment from {author_link}")
+                    with st.expander(f"Comment from {format_author_link(comment['author'])}", expanded=False):
                         st.markdown(
                             f"Score: {comment.get('score', 'N/A')} | "
                             f"Posted on: {comment['formatted_date']}"
                         )
                         st.markdown(comment['body'])
-                        st.markdown(f"[View full discussion →](https://www.reddit.com/r/RepLadies/comments/{comment['submission_id']}/comment/{comment['id']}/){:target='_blank'}")
+                        comment_url = f"https://www.reddit.com/r/RepLadies/comments/{comment['submission_id']}/comment/{comment['id']}/"
+                        st.markdown(f"[View full discussion →]({comment_url})")
                         st.divider()
         
         if no_results:
