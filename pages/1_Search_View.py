@@ -297,7 +297,8 @@ with st.sidebar:
             value=None,
             min_value=date_range['min_date'],
             max_value=date_range['max_date'],
-            key='start_date'  # Add key for tracking
+            key='start_date',
+            format="MM/DD/YYYY"  # Add date format
         )
     with col2:
         end_date = st.date_input(
@@ -305,7 +306,8 @@ with st.sidebar:
             value=None,
             min_value=date_range['min_date'],
             max_value=date_range['max_date'],
-            key='end_date'  # Add key for tracking
+            key='end_date',
+            format="MM/DD/YYYY"  # Add date format
         )
 
     # Check if dates changed
@@ -314,9 +316,6 @@ with st.sidebar:
         st.session_state.page = 1
         st.session_state.previous_start_date = start_date
         st.session_state.previous_end_date = end_date
-
-    # Debug info
-    st.caption(f"Available date range: {date_range['min_date']} to {date_range['max_date']}")
 
 # Main search interface
 search_query = st.text_input("Enter your search terms", key="search_box")
