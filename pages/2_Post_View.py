@@ -18,10 +18,18 @@ def get_post(post_id: str):
     try:
         response = requests.get(f"{API_BASE_URL}/api/posts/{post_id}", timeout=10)
         if response.status_code == 404:
+            st.error("Post not found")
             return None
+        elif response.status_code != 200:
+            st.error(f"Error fetching post (Status {response.status_code})")
+            return None
+            
         response.raise_for_status()
         return response.json()
-    except Exception as e:
+    except requests.Timeout:
+        st.error("Request timed out. Please try again.")
+        return None
+    except requests.RequestException as e:
         st.error(f"Error fetching post: {str(e)}")
         return None
 
