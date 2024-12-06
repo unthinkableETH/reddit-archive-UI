@@ -257,6 +257,11 @@ if not search_query:
     st.caption("Pro tip: Try using AND, OR, NOT to refine your search")
 
 if search_query:
+    # Check if this is a new search by comparing with previous search
+    if 'previous_search' not in st.session_state or st.session_state.previous_search != search_query:
+        st.session_state.page = 1  # Reset to page 1
+        st.session_state.previous_search = search_query  # Store current search
+    
     try:
         post_results = None
         comment_results = None
