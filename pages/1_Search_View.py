@@ -434,8 +434,8 @@ if search_query:
                             st.markdown(comment['body'])
                     else:
                         st.markdown(comment['body'])
-                        
-                    st.markdown(f"[View full discussion →](/Post_View?post_id={comment['submission_id']})")
+                    
+                    st.markdown(f"[View full discussion →](/Post_View?post_id={comment['submission_id']}&comment_id={comment['id']})")
         
         if no_results:
             if search_type == "comments":
