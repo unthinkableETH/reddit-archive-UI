@@ -25,6 +25,16 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+# At the top of your file, add this CSS
+st.markdown("""
+    <style>
+        .streamlit-expanderHeader {
+            font-size: 1.25rem !important;
+            font-weight: 600 !important;
+        }
+    </style>
+""", unsafe_allow_html=True)
+
 # API endpoint constants
 API_BASE_URL = "https://m6njm571hh.execute-api.us-east-2.amazonaws.com"
 
@@ -343,7 +353,7 @@ if search_query:
                 st.caption(f"Showing results {current_start} - {current_end} of {post_results['total_results']}")
                 
                 for post in post_results['results']:
-                    with st.expander(f"## {post['title']}", expanded=False):
+                    with st.expander(post['title']):  # Just the title, no markdown
                         author_link = format_author_link(post['author'])
                         st.markdown(
                             f"Posted by {author_link} | "
