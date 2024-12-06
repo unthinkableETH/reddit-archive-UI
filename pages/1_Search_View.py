@@ -343,9 +343,7 @@ if search_query:
                 st.caption(f"Showing results {current_start} - {current_end} of {post_results['total_results']}")
                 
                 for post in post_results['results']:
-                    with st.expander("", expanded=False):
-                        st.subheader(post['title'])
-                        
+                    with st.expander(post['title'], expanded=False):
                         author_link = format_author_link(post['author'])
                         st.markdown(
                             f"Posted by {author_link} | "
