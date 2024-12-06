@@ -300,24 +300,28 @@ with st.sidebar:
             "From",
             value=None,
             min_value=date_range['min_date'],
-            max_value=date_range['max_date']
+            max_value=date_range['max_date'],
+            key='start_date'  # Add key for tracking
         )
     with col2:
         end_date = st.date_input(
             "To",
             value=None,
             min_value=date_range['min_date'],
-            max_value=date_range['max_date']
+            max_value=date_range['max_date'],
+            key='end_date'  # Add key for tracking
         )
 
-    # Reset page when search type or dates change
+    # Check if search parameters changed
+    search_changed = False
     if (st.session_state.previous_search_type != search_type or 
-        st.session_state.previous_start_date != start_date or 
-        st.session_state.previous_end_date != end_date):
+        st.session_state.previous_start_date != st.session_state.get('start_date') or 
+        st.session_state.previous_end_date != st.session_state.get('end_date')):
+        search_changed = True
         st.session_state.page = 1
         st.session_state.previous_search_type = search_type
-        st.session_state.previous_start_date = start_date
-        st.session_state.previous_end_date = end_date
+        st.session_state.previous_start_date = st.session_state.get('start_date')
+        st.session_state.previous_end_date = st.session_state.get('end_date')
 
     # Add debug info to see what's happening
     st.caption(f"Available date range: {date_range['min_date']} to {date_range['max_date']}")
