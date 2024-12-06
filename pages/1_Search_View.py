@@ -38,9 +38,13 @@ st.markdown("""
 # API endpoint constants
 API_BASE_URL = "https://m6njm571hh.execute-api.us-east-2.amazonaws.com"
 
-# Add this near the top of your file with other session state initializations
+# At the top with other session state initializations
 if 'previous_search_type' not in st.session_state:
     st.session_state.previous_search_type = None
+if 'previous_start_date' not in st.session_state:
+    st.session_state.previous_start_date = None
+if 'previous_end_date' not in st.session_state:
+    st.session_state.previous_end_date = None
 
 @st.cache_data(ttl=3600)  # Cache for 1 hour
 def get_valid_date_range():
@@ -292,17 +296,26 @@ with st.sidebar:
             "From",
             value=None,
             min_value=date_range['min_date'],
-            max_value=date_range['max_date']
+            max_value=date_range['max_date'],
+            key='start_date'  # Add key for tracking
         )
     with col2:
         end_date = st.date_input(
             "To",
             value=None,
             min_value=date_range['min_date'],
-            max_value=date_range['max_date']
+            max_value=date_range['max_date'],
+            key='end_date'  # Add key for tracking
         )
 
-    # Add debug info to see what's happening
+    # Check if dates changed
+    if (st.session_state.previous_start_date != start_date or 
+        st.session_state.previous_end_date != end_date):
+        st.session_state.page = 1
+        st.session_state.previous_start_date = start_date
+        st.session_state.previous_end_date = end_date
+
+    # Debug info
     st.caption(f"Available date range: {date_range['min_date']} to {date_range['max_date']}")
 
 # Main search interface
