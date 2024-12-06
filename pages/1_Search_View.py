@@ -18,6 +18,20 @@ st.title("Search RepLadies Archive")
 # API endpoint constants
 API_BASE_URL = "https://m6njm571hh.execute-api.us-east-2.amazonaws.com"
 
+@st.cache_data(ttl=3600)  # Cache for 1 hour
+def get_valid_date_range():
+    try:
+        response = requests.get(f"{API_BASE_URL}/api/metadata/date_range")
+        if response.status_code == 200:
+            data = response.json()
+            return (
+                datetime.fromisoformat(data['earliest_date']).date(),
+                datetime.fromisoformat(data['latest_date']).date()
+            )
+    except Exception as e:
+        st.error(f"Error fetching date range: {str(e)}")
+    return (datetime(2015, 1, 1).date(), datetime.now().date())  # Fallback dates
+
 def scroll_to_top():
     js = '''
     <script>
@@ -226,22 +240,24 @@ with st.sidebar:
     
     # Date range picker
     st.subheader("Date Range")
+    min_date, max_date = get_valid_date_range()
+    
     col1, col2 = st.columns(2)
     with col1:
         start_date = st.date_input(
             "From",
             value=None,
-            min_value=datetime(2015, 1, 1).date(),
-            max_value=datetime.now().date(),
-            help="Optional: Filter posts from this date"
+            min_value=min_date,
+            max_value=max_date,
+            help="Filter posts from this date"
         )
     with col2:
         end_date = st.date_input(
             "To",
             value=None,
-            min_value=datetime(2015, 1, 1).date(),
-            max_value=datetime.now().date(),
-            help="Optional: Filter posts up to this date"
+            min_value=min_date,
+            max_value=max_date,
+            help="Filter posts up to this date"
         )
 
 # Main search interface
@@ -318,7 +334,13 @@ if search_query:
                 st.caption(f"Showing results {current_start} - {current_end} of {post_results['total_results']}")
                 
                 for post in post_results['results']:
-                    with st.expander(f"### {post['title']}", expanded=False):
+                    # Use HTML for larger title with custom styling
+                    title_html = f"""
+                    <div style="font-size: 20px; font-weight: 600; margin-bottom: 10px;">
+                        {post['title']}
+                    </div>
+                    """
+                    with st.expander(title_html, expanded=False):
                         author_link = format_author_link(post['author'])
                         st.markdown(
                             f"Posted by {author_link} | "
