@@ -157,7 +157,7 @@ def format_author_link(author):
     """Format author name as link unless deleted"""
     if author in ['[deleted]', 'deleted', None]:
         return '[deleted]'
-    return f"[u/{author}](https://www.reddit.com/user/{author})"
+    return f"[u/{author}](/Profile_View?author={author})"
 
 # Sidebar controls
 with st.sidebar:
@@ -332,8 +332,7 @@ if search_query:
                         st.markdown("---")
                         col1, col2 = st.columns([5,1])
                         with col2:
-                            discussion_url = f"https://www.reddit.com/r/RepLadies/comments/{post['id']}/"
-                            st.markdown(f"[💬 View Discussion]({discussion_url})")
+                            st.markdown(f"[💬 View Discussion](/Post_View?post_id={post['id']})")
         
         if search_type in ["comments", "everything"]:
             if comment_results and comment_results.get('results'):
@@ -355,8 +354,7 @@ if search_query:
                             f"Posted on: {comment['formatted_date']}"
                         )
                         st.markdown(comment['body'])
-                        comment_url = f"https://www.reddit.com/r/RepLadies/comments/{comment['submission_id']}/comment/{comment['id']}/"
-                        st.markdown(f"[View full discussion →]({comment_url})")
+                        st.markdown(f"[View full discussion →](/Post_View?post_id={comment['submission_id']})")
                         st.divider()
         
         if no_results:
