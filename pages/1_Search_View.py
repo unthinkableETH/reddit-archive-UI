@@ -21,16 +21,21 @@ API_BASE_URL = "https://m6njm571hh.execute-api.us-east-2.amazonaws.com"
 @st.cache_data(ttl=3600)  # Cache for 1 hour
 def get_valid_date_range():
     try:
-        response = requests.get(f"{API_BASE_URL}/api/metadata/date_range")
+        response = requests.get(f"{API_BASE_URL}/api/metadata/date_range", timeout=10)
         if response.status_code == 200:
             data = response.json()
-            return (
-                datetime.fromisoformat(data['earliest_date']).date(),
-                datetime.fromisoformat(data['latest_date']).date()
-            )
+            return {
+                'min_date': datetime.strptime(data['earliest_date'], '%Y-%m-%d').date(),
+                'max_date': datetime.strptime(data['latest_date'], '%Y-%m-%d').date()
+            }
     except Exception as e:
         st.error(f"Error fetching date range: {str(e)}")
-    return (datetime(2015, 1, 1).date(), datetime.now().date())  # Fallback dates
+    
+    # Fallback dates
+    return {
+        'min_date': datetime(2020, 1, 1).date(),
+        'max_date': datetime.now().date()
+    }
 
 def scroll_to_top():
     js = '''
@@ -175,14 +180,7 @@ def format_author_link(author):
 
 # Sidebar controls
 with st.sidebar:
-    st.header("Search Options")
-    
-    search_method = st.radio(
-        "Search Method",
-        ["Fast Search (Beta)"],
-        help="Optimized search using our API"
-    )
-    
+    st.subheader("Search Options")
     search_type = st.radio(
         "Search in:", 
         ["post_title", "post_body", "comments", "everything"],
@@ -240,25 +238,26 @@ with st.sidebar:
     
     # Date range picker
     st.subheader("Date Range")
-    min_date, max_date = get_valid_date_range()
+    date_range = get_valid_date_range()
     
     col1, col2 = st.columns(2)
     with col1:
         start_date = st.date_input(
             "From",
             value=None,
-            min_value=min_date,
-            max_value=max_date,
-            help="Filter posts from this date"
+            min_value=date_range['min_date'],
+            max_value=date_range['max_date']
         )
     with col2:
         end_date = st.date_input(
             "To",
             value=None,
-            min_value=min_date,
-            max_value=max_date,
-            help="Filter posts up to this date"
+            min_value=date_range['min_date'],
+            max_value=date_range['max_date']
         )
+
+    # Add debug info to see what's happening
+    st.caption(f"Available date range: {date_range['min_date']} to {date_range['max_date']}")
 
 # Main search interface
 search_query = st.text_input("Enter your search terms", key="search_box")
