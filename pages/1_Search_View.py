@@ -153,6 +153,12 @@ def should_show_next_button(results):
     
     return len(results_list) == limit and current_page < total_pages
 
+def format_author_link(author):
+    """Format author name as link unless deleted"""
+    if author in ['[deleted]', 'deleted', None]:
+        return '[deleted]'
+    return f"[u/{author}](https://www.reddit.com/user/{author}){:target='_blank'}"
+
 # Sidebar controls
 with st.sidebar:
     st.header("Search Options")
@@ -313,9 +319,10 @@ if search_query:
                 
                 for post in post_results['results']:
                     with st.container():
+                        author_link = format_author_link(post['author'])
                         st.markdown(f"### {post['title']}")
                         st.markdown(
-                            f"Posted by u/{post['author']} | "
+                            f"Posted by {author_link} | "
                             f"Score: {post.get('score', 'N/A')} | "  # Handle possible NULL values
                             f"Comments: {post.get('num_comments', 'N/A')} | "  # Handle possible NULL values
                             f"Posted on: {post['formatted_date']}"
@@ -323,6 +330,7 @@ if search_query:
                         with st.expander("Show Content"):
                             st.write(post['selftext'])
                         st.divider()
+                        st.markdown(f"[View full discussion →](https://www.reddit.com/r/RepLadies/comments/{post['id']}/){:target='_blank'}")
         
         if search_type in ["comments", "everything"]:
             if comment_results and comment_results.get('results'):
@@ -339,19 +347,14 @@ if search_query:
                 
                 for comment in comment_results['results']:
                     with st.container():
+                        author_link = format_author_link(comment['author'])
+                        st.markdown(f"Comment from {author_link}")
                         st.markdown(
-                            f"""
-                            <div style='padding: 8px; border-left: 2px solid #ccc;'>
-                                <strong>u/{comment['author']}</strong><br>
-                                <i>Score: {comment['score']} | Posted on: {comment['formatted_date']}</i>
-                                <p>{comment['body']}</p>
-                                <a href="/Post_View?post_id={comment['submission_id']}&comment_id={comment['id']}">
-                                    View Full Discussion
-                                </a>
-                            </div>
-                            """,
-                            unsafe_allow_html=True
+                            f"Score: {comment.get('score', 'N/A')} | "
+                            f"Posted on: {comment['formatted_date']}"
                         )
+                        st.markdown(comment['body'])
+                        st.markdown(f"[View full discussion →](https://www.reddit.com/r/RepLadies/comments/{comment['submission_id']}/comment/{comment['id']}/){:target='_blank'}")
                         st.divider()
         
         if no_results:
