@@ -38,6 +38,14 @@ st.markdown("""
 # API endpoint constants
 API_BASE_URL = "https://m6njm571hh.execute-api.us-east-2.amazonaws.com"
 
+# Add these near the top with other session state initializations
+if 'previous_search_type' not in st.session_state:
+    st.session_state.previous_search_type = None
+if 'previous_start_date' not in st.session_state:
+    st.session_state.previous_start_date = None
+if 'previous_end_date' not in st.session_state:
+    st.session_state.previous_end_date = None
+
 @st.cache_data(ttl=3600)  # Cache for 1 hour
 def get_valid_date_range():
     try:
@@ -198,8 +206,7 @@ def format_author_link(author):
         return '[deleted]'
     return f"[u/{author}](/Profile_View?author={author})"
 
-def get_preview(text, max_length=2000):
-
+def get_preview(text, max_length=200):
     """Get a preview of text, cutting at the nearest sentence or word boundary"""
     if len(text) <= max_length:
         return text, False
@@ -226,8 +233,18 @@ with st.sidebar:
             "post_body": "Post Content Only",
             "comments": "Comments Only",
             "everything": "Everything (Posts + Comments)"
-        }[x]
+        }[x],
+        key='search_type'  # Add a key to track changes
     )
+    
+    # Reset page when search type changes
+    if (st.session_state.previous_search_type != search_type or 
+        st.session_state.previous_start_date != start_date or 
+        st.session_state.previous_end_date != end_date):
+        st.session_state.page = 1
+        st.session_state.previous_search_type = search_type
+        st.session_state.previous_start_date = start_date
+        st.session_state.previous_end_date = end_date
     
     # Show different sort options based on search type
     if search_type == "everything":
@@ -292,6 +309,15 @@ with st.sidebar:
             min_value=date_range['min_date'],
             max_value=date_range['max_date']
         )
+
+    # Reset page when search type or dates change
+    if (st.session_state.previous_search_type != search_type or 
+        st.session_state.previous_start_date != start_date or 
+        st.session_state.previous_end_date != end_date):
+        st.session_state.page = 1
+        st.session_state.previous_search_type = search_type
+        st.session_state.previous_start_date = start_date
+        st.session_state.previous_end_date = end_date
 
     # Add debug info to see what's happening
     st.caption(f"Available date range: {date_range['min_date']} to {date_range['max_date']}")
