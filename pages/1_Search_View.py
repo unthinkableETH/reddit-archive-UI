@@ -15,6 +15,16 @@ st.markdown(DARK_THEME_CSS, unsafe_allow_html=True)
 
 st.title("Search RepLadies Archive")
 
+# At the top of your file
+st.markdown("""
+    <style>
+    .streamlit-expanderHeader {
+        font-size: 24px !important;
+        font-weight: bold !important;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
 # API endpoint constants
 API_BASE_URL = "https://m6njm571hh.execute-api.us-east-2.amazonaws.com"
 
@@ -333,7 +343,9 @@ if search_query:
                 st.caption(f"Showing results {current_start} - {current_end} of {post_results['total_results']}")
                 
                 for post in post_results['results']:
-                    with st.expander(f"## {post['title']}", expanded=False):
+                    with st.expander("", expanded=False):
+                        st.subheader(post['title'])
+                        
                         author_link = format_author_link(post['author'])
                         st.markdown(
                             f"Posted by {author_link} | "
