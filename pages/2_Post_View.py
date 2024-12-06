@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import requests
 from utils import format_date, DARK_THEME_CSS
 
