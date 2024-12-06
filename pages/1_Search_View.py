@@ -135,6 +135,24 @@ def search_api_comments(query: str, sort: str, page: int = 1, limit: int = 20, s
         st.error(f"API Error: {str(e)}")
         return None
 
+# Add this helper function at the top with your other imports and helper functions
+def should_show_next_button(results):
+    """
+    Determines if we should show the next button based on results
+    """
+    if not results or not isinstance(results, dict):
+        return False
+    
+    # Check if we have results and they match the limit
+    results_list = results.get('results', [])
+    limit = results.get('limit', 20)
+    
+    # Show next if we have a full page of results and haven't reached total pages
+    current_page = results.get('page', 1)
+    total_pages = results.get('total_pages', 0)
+    
+    return len(results_list) == limit and current_page < total_pages
+
 # Sidebar controls
 with st.sidebar:
     st.header("Search Options")
@@ -342,12 +360,12 @@ if search_query:
         # Pagination controls
         if search_query and (post_results or comment_results):
             col1, col2, col3 = st.columns([1, 2, 1])
+            current_page = st.session_state.get('page', 1)
             
             # Get total pages for both result types
             post_total_pages = post_results.get('total_pages', 0) if post_results else 0
             comment_total_pages = comment_results.get('total_pages', 0) if comment_results else 0
             max_total_pages = max(post_total_pages, comment_total_pages)
-            current_page = st.session_state.get('page', 1)
             
             with col1:
                 if current_page > 1:
