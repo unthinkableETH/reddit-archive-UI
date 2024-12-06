@@ -1,8 +1,9 @@
 import streamlit as st
-import streamlit.components.v1 as components
-from database import execute_query
-from queries import GET_POST_BY_ID, GET_COMMENTS_FOR_POST, SORT_ORDERS
+import requests
 from utils import format_date, DARK_THEME_CSS
+
+# API endpoint constants
+API_BASE_URL = "https://m6njm571hh.execute-api.us-east-2.amazonaws.com"
 
 st.set_page_config(
     page_title="Post View",
@@ -11,6 +12,32 @@ st.set_page_config(
 )
 
 st.markdown(DARK_THEME_CSS, unsafe_allow_html=True)
+
+def get_post(post_id: str):
+    """Fetch post data from API"""
+    try:
+        response = requests.get(f"{API_BASE_URL}/api/posts/{post_id}", timeout=10)
+        if response.status_code == 404:
+            return None
+        response.raise_for_status()
+        return response.json()
+    except Exception as e:
+        st.error(f"Error fetching post: {str(e)}")
+        return None
+
+def get_comments(post_id: str, sort: str = "most_upvotes"):
+    """Fetch comments from API"""
+    try:
+        response = requests.get(
+            f"{API_BASE_URL}/api/posts/{post_id}/comments",
+            params={"sort": sort, "include_removed": False},
+            timeout=10
+        )
+        response.raise_for_status()
+        return response.json()
+    except Exception as e:
+        st.error(f"Error fetching comments: {str(e)}")
+        return None
 
 def display_nested_comments(comments, highlight_comment_id=None):
     """Display comments in a nested tree structure"""
@@ -21,7 +48,7 @@ def display_nested_comments(comments, highlight_comment_id=None):
     top_level_comments = []
     
     # Build comment dictionary
-    for comment in comments:
+    for comment in comments['results']:  # Note: comments are now in 'results' key
         comment_dict[comment['id']] = {
             'data': comment,
             'replies': [],
@@ -29,7 +56,7 @@ def display_nested_comments(comments, highlight_comment_id=None):
         }
     
     # Build hierarchy
-    for comment in comments:
+    for comment in comments['results']:
         parent_id = comment['parent_id']
         if parent_id == post_id:
             top_level_comments.append(comment['id'])
@@ -212,13 +239,11 @@ with st.sidebar:
 
 try:
     # Fetch post
-    post = execute_query(GET_POST_BY_ID, (post_id,))
+    post = get_post(post_id)
     
     if not post:
         st.error("Post not found")
         st.stop()
-        
-    post = post[0]  # Get first result
     
     # Display post
     st.title(post['title'])
@@ -227,19 +252,16 @@ try:
         f"Posted by u/{post['author']} | "
         f"Score: {post['score']} | "
         f"Comments: {post['num_comments']} | "
-        f"Posted on: {format_date(post['created_utc'])}"
+        f"Posted on: {post['formatted_date']}"
     )
     st.divider()
     
     # Fetch comments
-    comments = execute_query(
-        GET_COMMENTS_FOR_POST.format(sort_order=SORT_ORDERS[comment_sort]), 
-        (post_id,)
-    )
+    comments_data = get_comments(post_id, comment_sort)
     
-    if comments:
+    if comments_data and comments_data['results']:
         # Create a lookup dictionary for quick access
-        comment_dict = {comment['id']: comment for comment in comments}
+        comment_dict = {comment['id']: comment for comment in comments_data['results']}
         
         # If there's a highlighted comment and bring_to_top is enabled
         if highlight_comment_id and highlight_comment and bring_to_top:
@@ -266,39 +288,21 @@ try:
                     is_highlighted = comment['id'] == highlight_comment_id
                     style = "background-color: rgba(255, 0, 0, 0.1);" if is_highlighted else ""
                     
-                    # Determine level label
-                    level = i  # Index in the chain represents the level
-                    level_label = {
-                        0: "Reply to Original Post (Level 1)",
-                        1: "Reply to Original Comment (Level 2)",
-                    }.get(level, f"Level {level + 1} Reply")
-                    
-                    # Pre-process the comment body
-                    body = comment['body']
-                    # Convert markdown links to HTML
-                    import re
-                    body = re.sub(
-                        r'\[(.*?)\]\((.*?)\)',
-                        r'<a href="\2" target="_blank" class="comment-link">\1</a>',
-                        body
-                    )
-                    # Replace newlines with <br>
-                    body = body.replace('\n', '<br>')
-                    
+                    # Display comment with metadata
                     st.markdown(
                         f"""<div style='padding: 8px; border-left: 2px solid #ccc;'>
-                            <strong>u/{comment['author']}</strong> - 
-                            <span class="level-label">{level_label}</span><br>
-                            <i>Score: {comment['score']} | Posted on: {format_date(comment['created_utc'])}</i>
-                            <div style="{style}">{body}</div>
+                            <strong>u/{comment['author']}</strong> | 
+                            Score: {comment['score']} | 
+                            Posted on: {comment['formatted_date']}
+                            <div style="{style}">{comment['body']}</div>
                         </div>""",
                         unsafe_allow_html=True
                     )
                     st.divider()
         
         # Display all comments in nested structure
-        st.header("All Comments")
-        display_nested_comments(comments, highlight_comment_id if highlight_comment else None)
+        st.header(f"All Comments ({comments_data['total_comments']})")
+        display_nested_comments(comments_data, highlight_comment_id if highlight_comment else None)
     else:
         st.info("No comments found for this post")
 
