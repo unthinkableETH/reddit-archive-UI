@@ -38,13 +38,9 @@ st.markdown("""
 # API endpoint constants
 API_BASE_URL = "https://m6njm571hh.execute-api.us-east-2.amazonaws.com"
 
-# Add these near the top with other session state initializations
+# Add this near the top of your file with other session state initializations
 if 'previous_search_type' not in st.session_state:
     st.session_state.previous_search_type = None
-if 'previous_start_date' not in st.session_state:
-    st.session_state.previous_start_date = None
-if 'previous_end_date' not in st.session_state:
-    st.session_state.previous_end_date = None
 
 @st.cache_data(ttl=3600)  # Cache for 1 hour
 def get_valid_date_range():
@@ -234,10 +230,57 @@ with st.sidebar:
             "comments": "Comments Only",
             "everything": "Everything (Posts + Comments)"
         }[x],
-        key='search_type'
+        key='search_type'  # Add a key to track changes
     )
     
-    # Sort options here...
+    # Reset page when search type changes
+    if st.session_state.previous_search_type != search_type:
+        st.session_state.page = 1
+        st.session_state.previous_search_type = search_type
+    
+    # Show different sort options based on search type
+    if search_type == "everything":
+        st.subheader("Sort Options")
+        col1, col2 = st.columns(2)
+        with col1:
+            post_sort = st.selectbox(
+                "Sort Posts by:",
+                ["most_upvotes", "newest", "oldest", "most_comments"],
+                format_func=lambda x: {
+                    "most_upvotes": "Most Upvotes",
+                    "newest": "Newest First",
+                    "oldest": "Oldest First",
+                    "most_comments": "Most Comments"
+                }[x]
+            )
+        with col2:
+            comment_sort = st.selectbox(
+                "Sort Comments by:",
+                ["most_upvotes", "newest", "oldest"],
+                format_func=lambda x: {
+                    "most_upvotes": "Most Upvotes",
+                    "newest": "Newest First",
+                    "oldest": "Oldest First"
+                }[x]
+            )
+    else:
+        # Single sort option for other search types
+        sort_options = (
+            ["most_upvotes", "newest", "oldest", "most_comments"]
+            if search_type in ["post_title", "post_body"]
+            else ["most_upvotes", "newest", "oldest"]
+        )
+        
+        sort_by = st.selectbox(
+            "Sort by:",
+            sort_options,
+            format_func=lambda x: {
+                "most_upvotes": "Most Upvotes",
+                "newest": "Newest First",
+                "oldest": "Oldest First",
+                "most_comments": "Most Comments"
+            }[x]
+        )
     
     # Date range picker
     st.subheader("Date Range")
@@ -249,28 +292,17 @@ with st.sidebar:
             "From",
             value=None,
             min_value=date_range['min_date'],
-            max_value=date_range['max_date'],
-            key='start_date'
+            max_value=date_range['max_date']
         )
     with col2:
         end_date = st.date_input(
             "To",
             value=None,
             min_value=date_range['min_date'],
-            max_value=date_range['max_date'],
-            key='end_date'
+            max_value=date_range['max_date']
         )
 
-    # Now check for changes AFTER we have the values
-    if (st.session_state.previous_search_type != search_type or 
-        st.session_state.previous_start_date != st.session_state.get('start_date') or 
-        st.session_state.previous_end_date != st.session_state.get('end_date')):
-        st.session_state.page = 1
-        st.session_state.previous_search_type = search_type
-        st.session_state.previous_start_date = st.session_state.get('start_date')
-        st.session_state.previous_end_date = st.session_state.get('end_date')
-
-    # Debug info
+    # Add debug info to see what's happening
     st.caption(f"Available date range: {date_range['min_date']} to {date_range['max_date']}")
 
 # Main search interface
@@ -456,4 +488,3 @@ if search_query:
         st.error(f"Search error: {str(e)}")
 else:
     st.info("Enter search terms above to begin") 
-    
