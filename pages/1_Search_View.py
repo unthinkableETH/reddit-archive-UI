@@ -353,7 +353,7 @@ if search_query:
                 st.caption(f"Showing results {current_start} - {current_end} of {post_results['total_results']}")
                 
                 for post in post_results['results']:
-                    st.subheader(post['title'])  # Title as subheader
+                    st.subheader(post['title'])
                     
                     # Post metadata directly under subheader
                     author_link = format_author_link(post['author'])
@@ -366,8 +366,6 @@ if search_query:
                     
                     with st.expander("Show Post"):
                         st.markdown(post['selftext'])
-                        
-                        # Add separator and discussion link at bottom
                         st.markdown("---")
                         col1, col2 = st.columns([5,1])
                         with col2:
@@ -387,14 +385,15 @@ if search_query:
                 st.caption(f"Showing results {current_start} - {current_end} of {comment_results['total_results']}")
                 
                 for comment in comment_results['results']:
-                    with st.expander(f"Comment from {format_author_link(comment['author'])}", expanded=False):
-                        st.markdown(
-                            f"Score: {comment.get('score', 'N/A')} | "
-                            f"Posted on: {comment['formatted_date']}"
-                        )
-                        st.markdown(comment['body'])
-                        st.markdown(f"[View full discussion →](/Post_View?post_id={comment['submission_id']})")
-                        st.divider()
+                    st.markdown("---")  # Separator between comments
+                    author_link = format_author_link(comment['author'])
+                    st.markdown(
+                        f"**Comment by {author_link}** | "
+                        f"Score: {comment.get('score', 0)} | "
+                        f"Posted on: {comment['formatted_date']}"
+                    )
+                    st.markdown(comment['body'])
+                    st.markdown(f"[View full discussion →](/Post_View?post_id={comment['submission_id']})")
         
         if no_results:
             if search_type == "comments":
