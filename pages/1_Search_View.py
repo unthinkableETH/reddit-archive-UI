@@ -198,6 +198,22 @@ def format_author_link(author):
         return '[deleted]'
     return f"[u/{author}](/Profile_View?author={author})"
 
+def get_preview(text, max_length=200):
+    """Get a preview of text, cutting at the nearest sentence or word boundary"""
+    if len(text) <= max_length:
+        return text, False
+    
+    # Try to find the end of a sentence within the preview length
+    preview = text[:max_length]
+    sentence_end = max([preview.rfind('. '), preview.rfind('! '), preview.rfind('? ')])
+    
+    if sentence_end > max_length // 2:  # If we found a sentence end in a reasonable spot
+        preview = text[:sentence_end + 1]
+    else:  # Fall back to word boundary
+        preview = text[:max_length].rsplit(' ', 1)[0]
+    
+    return f"{preview}...", True
+
 # Sidebar controls
 with st.sidebar:
     st.subheader("Search Options")
@@ -386,13 +402,25 @@ if search_query:
                 
                 for comment in comment_results['results']:
                     st.markdown("---")  # Separator between comments
+                    
+                    # Comment metadata
                     author_link = format_author_link(comment['author'])
                     st.markdown(
                         f"**Comment by {author_link}** | "
                         f"Score: {comment.get('score', 0)} | "
                         f"Posted on: {comment['formatted_date']}"
                     )
-                    st.markdown(comment['body'])
+                    
+                    # Get preview and determine if we need an expander
+                    preview, needs_expander = get_preview(comment['body'])
+                    
+                    if needs_expander:
+                        st.markdown(preview)
+                        with st.expander("Show full comment"):
+                            st.markdown(comment['body'])
+                    else:
+                        st.markdown(comment['body'])
+                        
                     st.markdown(f"[View full discussion →](/Post_View?post_id={comment['submission_id']})")
         
         if no_results:
