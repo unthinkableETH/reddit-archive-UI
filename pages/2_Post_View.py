@@ -116,20 +116,23 @@ def display_nested_comments(comments, highlight_comment_id=None):
         "</style>",
         """
         .comment {
-            margin-left: calc(var(--level) * 35px);  /* Increased indentation */
+            margin-left: calc(var(--level) * 50px);
             margin-bottom: 1em;
-            padding: 10px;
+            padding: 12px;
             border-left: 2px solid #666;
+            transition: background-color 0.2s ease;
         }
-        .comment[data-level="0"] { 
-            margin-left: 0; 
+        .comment:hover {
+            background-color: rgba(255, 255, 255, 0.03);
         }
         .nested-comment {
-            background-color: rgba(255, 255, 255, 0.02);  /* Subtle background for nested comments */
+            background-color: rgba(255, 255, 255, 0.02);
         }
         .comment-header {
-            margin-bottom: 0.5em;
+            margin-bottom: 0.8em;
             font-size: 0.9em;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 5px;
         }
         .level-label {
             color: #999;
@@ -141,8 +144,9 @@ def display_nested_comments(comments, highlight_comment_id=None):
         }
         .comment-body {
             margin: 0;
-            padding: 10px;
+            padding: 10px 5px;
             white-space: pre-wrap;
+            line-height: 1.4;
         }
         button.expand-button {
             background: none;
@@ -152,12 +156,16 @@ def display_nested_comments(comments, highlight_comment_id=None):
             font-size: 0.85em;
             padding: 2px 0;
             opacity: 0.8;
+            margin-top: 5px;
         }
         button.expand-button:hover {
             opacity: 1;
+            color: #999;
         }
         .replies {
-            margin-top: 10px;
+            margin-top: 12px;
+            padding-top: 5px;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
         }
         </style>
     """
@@ -178,20 +186,23 @@ COMMENTS_CSS = """
             color: white;
         }
         .comment {
-            margin-left: calc(var(--level) * 50px);  /* Increased nesting indentation */
+            margin-left: calc(var(--level) * 50px);
             margin-bottom: 1em;
-            padding: 10px;
+            padding: 12px;
             border-left: 2px solid #666;
+            transition: background-color 0.2s ease;
         }
-        .comment[data-level="0"] { 
-            margin-left: 0; 
+        .comment:hover {
+            background-color: rgba(255, 255, 255, 0.03);
         }
         .nested-comment {
             background-color: rgba(255, 255, 255, 0.02);
         }
         .comment-header {
-            margin-bottom: 0.5em;
+            margin-bottom: 0.8em;
             font-size: 0.9em;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 5px;
         }
         .level-label {
             color: #999;
@@ -203,8 +214,9 @@ COMMENTS_CSS = """
         }
         .comment-body {
             margin: 0;
-            padding: 10px;
+            padding: 10px 5px;
             white-space: pre-wrap;
+            line-height: 1.4;
         }
         button.expand-button {
             background: none;
@@ -214,12 +226,16 @@ COMMENTS_CSS = """
             font-size: 0.85em;
             padding: 2px 0;
             opacity: 0.8;
+            margin-top: 5px;
         }
         button.expand-button:hover {
             opacity: 1;
+            color: #999;
         }
         .replies {
-            margin-top: 10px;
+            margin-top: 12px;
+            padding-top: 5px;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
         }
     </style>
 """
@@ -299,16 +315,18 @@ try:
                     if is_highlighted:
                         level_label += " 🔍 (Comment From Search)"
                         
-                    # Calculate column ratios properly
-                    indent = min(i, 4)  # Limit max indentation
-                    col_ratios = [1] * indent + [10]  # One part for each indent level, 10 parts for content
-                    
-                    cols = st.columns(col_ratios)
-                    with cols[-1]:  # Use last column for content
-                        st.markdown(f"**u/{comment['author']}** - _{level_label}_")
-                        st.markdown(f"Score: {comment['score']} | Posted on: {comment['formatted_date']}")
-                        st.markdown(comment['body'])
-                        st.divider()
+                    # Create a container with custom padding
+                    container = st.container()
+                    container.markdown(
+                        f"""
+                        <div style="margin-left: {i * 40}px; padding: 10px; border-left: 2px solid #666; background-color: {'rgba(255,255,255,0.02)' if i > 0 else 'transparent'}">
+                            <p><strong>u/{comment['author']}</strong> - <em>{level_label}</em><br>
+                            Score: {comment['score']} | Posted on: {comment['formatted_date']}</p>
+                            <p>{comment['body']}</p>
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                    )
                 
                 st.divider()
         
