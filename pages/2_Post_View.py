@@ -226,20 +226,50 @@ def format_comment_html(comment, level, is_highlighted=False):
     }.get(level, f"Level {level + 1} Reply")
     
     if is_highlighted:
-        level_label += " 🔍 (Comment from search)"
+        level_label += " 🔍 (Comment From Search)"  # Title case for each word
     
     return f"""
-        <div class="comment" data-level="{level}">
-            <div class="comment-header">
-                <strong>u/{comment['author']}</strong> - 
-                <span class="level-label">{level_label}</span><br>
-                <span class="metadata">Score: {comment['score']} | Posted on: {comment['formatted_date']}</span>
-            </div>
-            <div class="comment-body" style="background-color: {'rgba(255, 165, 0, 0.1)' if is_highlighted else 'transparent'}">
-                {comment['body'].strip()}
-            </div>
+    <div class="comment" data-level="{level}">
+        <div class="comment-header">
+            <strong>u/{comment['author']}</strong> - 
+            <span class="level-label">{level_label}</span><br>
+            <span class="metadata">Score: {comment['score']} | Posted on: {comment['formatted_date']}</span>
         </div>
+        <div class="comment-body">{comment['body'].strip()}</div>
+    </div>
     """
+
+# Common CSS for all comments
+COMMENTS_CSS = """
+    <style>
+        .comment {
+            margin-left: calc(var(--level) * 20px);
+            margin-bottom: 1em;
+            padding: 10px;
+            border-left: 2px solid #ccc;
+        }
+        .comment[data-level="0"] { 
+            margin-left: 0; 
+        }
+        .comment-header {
+            margin-bottom: 0.5em;
+            font-size: 0.9em;
+        }
+        .level-label {
+            color: #999;
+            font-style: italic;
+        }
+        .metadata {
+            color: #999;
+            font-size: 0.9em;
+        }
+        .comment-body {
+            margin: 0;
+            padding: 10px;
+            white-space: pre-wrap;
+        }
+    </style>
+"""
 
 # Get post and comment IDs from URL parameters
 params = st.query_params
@@ -321,49 +351,13 @@ try:
             # Display highlighted chain
             if highlighted_chain:
                 st.header("Highlighted Comment Thread")
-                comments_html = ""
+                comments_html = "".join(
+                    format_comment_html(comment, i, comment['id'] == highlight_comment_id)
+                    for i, comment in enumerate(highlighted_chain)
+                )
                 
-                for i, comment in enumerate(highlighted_chain):
-                    is_highlighted = comment['id'] == highlight_comment_id
-                    comments_html += format_comment_html(comment, i, is_highlighted)
-                
-                # Common CSS for both sections
-                COMMENTS_CSS = """
-                    <style>
-                        .comment {
-                            margin-left: calc(var(--level) * 20px);
-                            margin-bottom: 1em;
-                            padding: 10px;
-                            border-left: 2px solid #ccc;
-                        }
-                        .comment[data-level="0"] { margin-left: 0; }
-                        .comment-header {
-                            margin-bottom: 0.5em;
-                            font-size: 0.9em;
-                        }
-                        .level-label {
-                            color: #999;
-                            font-style: italic;
-                        }
-                        .metadata {
-                            color: #999;
-                            font-size: 0.9em;
-                        }
-                        .comment-body {
-                            margin: 0;
-                            padding: 10px;
-                            white-space: pre-wrap;
-                        }
-                    </style>
-                """
-                
-                # Display comments with consistent styling
                 components.html(
-                    COMMENTS_CSS + f"""
-                    <div class="comments-container">
-                        {comments_html}
-                    </div>
-                    """,
+                    COMMENTS_CSS + f'<div class="comments-container">{comments_html}</div>',
                     height=400,
                     scrolling=True
                 )
@@ -377,3 +371,4 @@ try:
 
 except Exception as e:
     st.error(f"Error loading post: {str(e)}")
+    
