@@ -55,6 +55,15 @@ def display_nested_comments(comments, highlight_comment_id=None):
         is_highlighted = comment['id'] == highlight_comment_id
         replies = comment_dict[comment_id]['replies']
         
+        # Generate level label
+        level_label = {
+            0: "Reply to Original Post (Level 1)",
+            1: "Reply to Original Comment (Level 2)",
+        }.get(level, f"Level {level + 1} Reply")
+        
+        if is_highlighted:
+            level_label += " 🔍 (Comment From Search)"
+        
         # Add expand/collapse button if there are replies
         expand_button = ""
         replies_html = ""
@@ -83,10 +92,44 @@ def display_nested_comments(comments, highlight_comment_id=None):
             </div>
         """
     
+    # Add JavaScript for expand/collapse functionality
+    js_code = """
+        <script>
+        function toggleReplies(commentId) {
+            const replies = document.getElementById('replies-' + commentId);
+            const button = document.getElementById('button-' + commentId);
+            if (replies.style.display === 'none') {
+                replies.style.display = 'block';
+                button.textContent = button.textContent.replace('[+]', '[-]').replace('Show', 'Hide');
+            } else {
+                replies.style.display = 'none';
+                button.textContent = button.textContent.replace('[-]', '[+]').replace('Hide', 'Show');
+            }
+        }
+        </script>
+    """
+    
+    # Add CSS for expand button
+    expand_button_css = """
+        .expand-button {
+            background: none;
+            border: none;
+            color: #999;
+            cursor: pointer;
+            font-size: 0.9em;
+            padding: 5px 0;
+            margin: 5px 0;
+        }
+        .expand-button:hover {
+            color: #fff;
+        }
+    """
+    
     comments_html = "".join(build_comment_html(comment_id) for comment_id in top_level_comments)
     
     components.html(
-        COMMENTS_CSS + f'<div class="comments-container">{comments_html}</div>',
+        COMMENTS_CSS + expand_button_css + js_code + 
+        f'<div class="comments-container">{comments_html}</div>',
         height=800,
         scrolling=True
     )
