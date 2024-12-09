@@ -383,7 +383,7 @@ try:
                     container = st.container()
                     container.markdown(
                         f"""
-                        <div style="margin-left: {i * 40}px; padding: 10px; border-left: 2px solid #666; background-color: {'rgba(255,255,255,0.01)' if i > 0 else 'transparent'}">
+                        <div style="margin-left: {i * 40}px; padding: 10px; border-left: 2px solid #666;">
                             <p><strong>u/{comment['author']}</strong> - <em>{level_label}</em><br>
                             Score: {comment['score']} | Posted on: {comment['formatted_date']}</p>
                             <p>{comment['body']}</p>
