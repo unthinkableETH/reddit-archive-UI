@@ -226,7 +226,7 @@ def format_comment_html(comment, level, is_highlighted=False):
     }.get(level, f"Level {level + 1} Reply")
     
     if is_highlighted:
-        level_label += " 🔍 (Comment From Search)"  # Title case for each word
+        level_label += " 🔍 (Comment From Search)"
     
     return f"""
     <div class="comment" data-level="{level}">
@@ -242,6 +242,9 @@ def format_comment_html(comment, level, is_highlighted=False):
 # Common CSS for all comments
 COMMENTS_CSS = """
     <style>
+        .comments-container {
+            color: white;
+        }
         .comment {
             margin-left: calc(var(--level) * 20px);
             margin-bottom: 1em;
@@ -371,4 +374,3 @@ try:
 
 except Exception as e:
     st.error(f"Error loading post: {str(e)}")
-    
