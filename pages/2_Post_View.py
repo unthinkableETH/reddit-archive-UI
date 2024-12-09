@@ -178,7 +178,7 @@ COMMENTS_CSS = """
             color: white;
         }
         .comment {
-            margin-left: calc(var(--level) * 35px);  /* Increased indentation */
+            margin-left: calc(var(--level) * 50px);  /* Increased nesting indentation */
             margin-bottom: 1em;
             padding: 10px;
             border-left: 2px solid #666;
@@ -187,7 +187,7 @@ COMMENTS_CSS = """
             margin-left: 0; 
         }
         .nested-comment {
-            background-color: rgba(255, 255, 255, 0.02);  /* Subtle background for nested comments */
+            background-color: rgba(255, 255, 255, 0.02);
         }
         .comment-header {
             margin-bottom: 0.5em;
@@ -288,7 +288,6 @@ try:
             
             if highlighted_chain:
                 st.header("Comment Thread Context")
-                comments_html = ""
                 
                 for i, comment in enumerate(highlighted_chain):
                     is_highlighted = comment['id'] == highlight_comment_id
@@ -300,26 +299,14 @@ try:
                     if is_highlighted:
                         level_label += " 🔍 (Comment From Search)"
                         
-                    # Add nested-comment class for non-top-level comments
-                    comment_class = "comment"
-                    if i > 0:
-                        comment_class += " nested-comment"
-                        
-                    comments_html += f"""
-                    <div class="{comment_class}" data-level="{i}">
-                        <div class="comment-header">
-                            <strong>u/{comment['author']}</strong> - 
-                            <span class="level-label">{level_label}</span><br>
-                            <span class="metadata">Score: {comment['score']} | Posted on: {comment['formatted_date']}</span>
-                        </div>
-                        <div class="comment-body">{comment['body'].strip()}</div>
-                    </div>
-                    """
+                    # Add indentation using columns
+                    cols = st.columns([i * 2, 20 - (i * 2)])
+                    with cols[1]:
+                        st.markdown(f"**u/{comment['author']}** - _{level_label}_")
+                        st.markdown(f"Score: {comment['score']} | Posted on: {comment['formatted_date']}")
+                        st.markdown(comment['body'])
+                        st.divider()
                 
-                # Display without scrolling container
-                components.html(
-                    COMMENTS_CSS + f'<div class="comments-container">{comments_html}</div>'
-                )
                 st.divider()
         
         # Display all comments
