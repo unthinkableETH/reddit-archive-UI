@@ -185,20 +185,27 @@ COMMENTS_CSS = """
         .comment {
             margin-left: calc(var(--level) * 50px);
             margin-bottom: 1.2em;
-            padding: 15px;
+            padding: 15px 18px;  /* Slightly more horizontal padding */
             border-left: 2px solid #666;
+            position: relative;  /* For nested styling */
         }
-        .comment[data-level="0"] {
-            margin-left: 0;
+        .comment[data-level="0"] { 
+            margin-left: 0; 
+            margin-bottom: 1.5em;  /* More space between top-level comments */
         }
         .nested-comment {
-            background-color: rgba(255, 255, 255, 0.02);
-            border-left: 2px solid #777;
+            background-color: rgba(255, 255, 255, 0.015);  /* Very subtle */
+        }
+        .comment[data-level="2"] {
+            background-color: rgba(255, 255, 255, 0.02);  /* Slightly more visible */
+        }
+        .comment[data-level="3"] {
+            background-color: rgba(255, 255, 255, 0.025);  /* Deeper nesting */
         }
         .comment-header {
             margin-bottom: 0.8em;
             font-size: 0.9em;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.07);
             padding-bottom: 8px;
         }
         .level-label {
@@ -217,21 +224,33 @@ COMMENTS_CSS = """
             padding: 10px 5px;
             white-space: pre-wrap;
             line-height: 1.5;
+            font-size: 0.95em;  /* Slightly smaller for better readability */
         }
         button.expand-button {
             background: none;
             border: none;
-            color: #666;
+            color: #777;  /* Slightly lighter */
             cursor: pointer;
             font-size: 0.85em;
             padding: 4px 0;
-            opacity: 0.8;
             margin-top: 8px;
             font-family: monospace;
+            letter-spacing: 0.5px;  /* Better spacing for the text */
         }
         .replies {
             margin-top: 12px;
             padding-top: 8px;
+            position: relative;
+        }
+        /* Subtle line to connect nested comments */
+        .replies::before {
+            content: '';
+            position: absolute;
+            left: -2px;
+            top: 0;
+            height: 8px;
+            width: 2px;
+            background: #666;
         }
     </style>
 """
@@ -314,7 +333,7 @@ try:
                     container = st.container()
                     container.markdown(
                         f"""
-                        <div style="margin-left: {i * 40}px; padding: 10px; border-left: 2px solid #666; background-color: {'rgba(255,255,255,0.02)' if i > 0 else 'transparent'}">
+                        <div style="margin-left: {i * 40}px; padding: 10px; border-left: 2px solid #666; background-color: {'rgba(255,255,255,0.01)' if i > 0 else 'transparent'}">
                             <p><strong>u/{comment['author']}</strong> - <em>{level_label}</em><br>
                             Score: {comment['score']} | Posted on: {comment['formatted_date']}</p>
                             <p>{comment['body']}</p>
