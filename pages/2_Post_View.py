@@ -339,28 +339,25 @@ with st.sidebar:
             st.components.v1.html(
                 """
                 <script>
-                    function expandAllComments() {
+                    function waitForElements() {
                         const replies = document.querySelectorAll('.replies');
-                        const buttons = document.querySelectorAll('.expand-button');
-                        
-                        replies.forEach(reply => {
-                            reply.style.display = 'block';
-                        });
-                        
-                        buttons.forEach(button => {
-                            const text = button.textContent;
-                            const count = text.match(/\d+/)[0];
-                            button.textContent = `[-] Hide ${count} replies`;
-                            button.classList.add('expanded');
-                        });
+                        if (replies.length > 0) {
+                            replies.forEach(reply => {
+                                reply.style.display = 'block';
+                            });
+                            
+                            document.querySelectorAll('.expand-button').forEach(button => {
+                                const replyCount = button.textContent.match(/\d+/)[0];
+                                const plural = replyCount === '1' ? 'reply' : 'replies';
+                                button.textContent = `[-] Hide ${replyCount} ${plural}`;
+                            });
+                        } else {
+                            setTimeout(waitForElements, 100);
+                        }
                     }
                     
-                    // Ensure DOM is loaded
-                    if (document.readyState === 'complete') {
-                        expandAllComments();
-                    } else {
-                        window.addEventListener('load', expandAllComments);
-                    }
+                    // Start checking for elements
+                    waitForElements();
                 </script>
                 """,
                 height=0
@@ -372,18 +369,14 @@ with st.sidebar:
                 """
                 <script>
                     function collapseAllComments() {
-                        const replies = document.querySelectorAll('.replies');
-                        const buttons = document.querySelectorAll('.expand-button');
-                        
-                        replies.forEach(reply => {
+                        document.querySelectorAll('.replies').forEach(reply => {
                             reply.style.display = 'none';
                         });
                         
-                        buttons.forEach(button => {
-                            const text = button.textContent;
-                            const count = text.match(/\d+/)[0];
-                            button.textContent = `[+] Show ${count} replies`;
-                            button.classList.remove('expanded');
+                        document.querySelectorAll('.expand-button').forEach(button => {
+                            const replyCount = button.textContent.match(/\d+/)[0];
+                            const plural = replyCount === '1' ? 'reply' : 'replies';
+                            button.textContent = `[+] Show ${replyCount} ${plural}`;
                         });
                     }
                     
