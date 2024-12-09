@@ -90,11 +90,14 @@ def display_nested_comments(comments, highlight_comment_id=None):
         # Filter out deleted replies
         valid_replies = [r for r in replies if comment_dict[r]['data']['body'] not in ['[deleted]', '[removed]']]
         
-        # Updated level labels
+        # Format level label with search indicator
         level_label = {
             0: "Reply to Original Post (Level 1)",
             1: "Reply to Original Comment (Level 2)",
         }.get(level, f"Level {level + 1} Reply")
+        
+        if is_highlighted:
+            level_label += " 🔍 (Comment from search)"
         
         # Format links in comment body
         body = comment['body']
@@ -301,13 +304,15 @@ try:
                     is_highlighted = comment['id'] == highlight_comment_id
                     level = i  # Level increases as we go deeper in the chain
                     
-                    # Format level label like in the main comments section
+                    # Format level label with search indicator
                     level_label = {
                         0: "Reply to Original Post (Level 1)",
                         1: "Reply to Original Comment (Level 2)",
                     }.get(level, f"Level {level + 1} Reply")
                     
-                    # Create HTML for the comment similar to main comments section
+                    if is_highlighted:
+                        level_label += " 🔍 (Comment from search)"
+                    
                     comments_html += f"""
                         <div class="comment" data-level="{level}">
                             <div class="comment-header">
@@ -315,13 +320,13 @@ try:
                                 <span class="level-label">{level_label}</span><br>
                                 <span class="metadata">Score: {comment['score']} | Posted on: {comment['formatted_date']}</span>
                             </div>
-                            <p class="comment-body" style="background-color: {'rgba(255, 165, 0, 0.1)' if is_highlighted else 'transparent'}">
+                            <p class="comment-body" style="background-color: {'rgba(255, 165, 0, 0.1)' if is_highlighted else 'transparent'}; color: white;">
                                 {comment['body']}
                             </p>
                         </div>
                     """
                 
-                # Display the highlighted chain with the same styling as main comments
+                # Display the highlighted chain with updated styling
                 components.html(
                     f"""
                     <style>
@@ -330,6 +335,7 @@ try:
                             margin-bottom: 1em;
                             padding: 10px;
                             border-left: 2px solid #ccc;
+                            color: white;  /* Set text color to white */
                         }}
                         .comment[data-level="0"] {{ margin-left: 0; }}
                         .comment-header {{
@@ -337,11 +343,11 @@ try:
                             font-size: 0.9em;
                         }}
                         .level-label {{
-                            color: #666;
+                            color: #999;  /* Lighter gray for better visibility */
                             font-style: italic;
                         }}
                         .metadata {{
-                            color: #666;
+                            color: #999;  /* Lighter gray for better visibility */
                             font-size: 0.9em;
                         }}
                         .comment-body {{
