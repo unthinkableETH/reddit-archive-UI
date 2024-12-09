@@ -69,11 +69,9 @@ def display_nested_comments(comments, highlight_comment_id=None):
         replies_html = ""
         if replies:
             expand_button = f"""
-                <div class="expand-wrapper">
-                    <button onclick="toggleReplies('{comment['id']}')" class="expand-button" id="button-{comment['id']}">
-                        [+] Show {len(replies)} repl{'y' if len(replies) == 1 else 'ies'}
-                    </button>
-                </div>
+                <button onclick="toggleReplies('{comment['id']}')" class="expand-button" id="button-{comment['id']}">
+                    [+] {len(replies)} {'reply' if len(replies) == 1 else 'replies'}
+                </button>
             """
             replies_html = f"""
                 <div class="replies" id="replies-{comment['id']}" style="display: none;">
@@ -117,36 +115,39 @@ def display_nested_comments(comments, highlight_comment_id=None):
         """
         .comment {
             margin-left: calc(var(--level) * 50px);
-            margin-bottom: 1em;
-            padding: 12px;
+            margin-bottom: 1.2em;
+            padding: 15px;
             border-left: 2px solid #666;
-            transition: background-color 0.2s ease;
         }
-        .comment:hover {
-            background-color: rgba(255, 255, 255, 0.03);
+        .comment[data-level="0"] {
+            margin-left: 0;
         }
         .nested-comment {
             background-color: rgba(255, 255, 255, 0.02);
+            border-left: 2px solid #777;
         }
         .comment-header {
             margin-bottom: 0.8em;
             font-size: 0.9em;
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            padding-bottom: 5px;
+            padding-bottom: 8px;
         }
         .level-label {
             color: #999;
             font-style: italic;
+            margin-left: 4px;
         }
         .metadata {
             color: #999;
             font-size: 0.9em;
+            margin-top: 3px;
+            display: block;
         }
         .comment-body {
             margin: 0;
             padding: 10px 5px;
             white-space: pre-wrap;
-            line-height: 1.4;
+            line-height: 1.5;
         }
         button.expand-button {
             background: none;
@@ -154,18 +155,14 @@ def display_nested_comments(comments, highlight_comment_id=None):
             color: #666;
             cursor: pointer;
             font-size: 0.85em;
-            padding: 2px 0;
+            padding: 4px 0;
             opacity: 0.8;
-            margin-top: 5px;
-        }
-        button.expand-button:hover {
-            opacity: 1;
-            color: #999;
+            margin-top: 8px;
+            font-family: monospace;
         }
         .replies {
             margin-top: 12px;
-            padding-top: 5px;
-            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            padding-top: 8px;
         }
         </style>
     """
@@ -187,36 +184,39 @@ COMMENTS_CSS = """
         }
         .comment {
             margin-left: calc(var(--level) * 50px);
-            margin-bottom: 1em;
-            padding: 12px;
+            margin-bottom: 1.2em;
+            padding: 15px;
             border-left: 2px solid #666;
-            transition: background-color 0.2s ease;
         }
-        .comment:hover {
-            background-color: rgba(255, 255, 255, 0.03);
+        .comment[data-level="0"] {
+            margin-left: 0;
         }
         .nested-comment {
             background-color: rgba(255, 255, 255, 0.02);
+            border-left: 2px solid #777;
         }
         .comment-header {
             margin-bottom: 0.8em;
             font-size: 0.9em;
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            padding-bottom: 5px;
+            padding-bottom: 8px;
         }
         .level-label {
             color: #999;
             font-style: italic;
+            margin-left: 4px;
         }
         .metadata {
             color: #999;
             font-size: 0.9em;
+            margin-top: 3px;
+            display: block;
         }
         .comment-body {
             margin: 0;
             padding: 10px 5px;
             white-space: pre-wrap;
-            line-height: 1.4;
+            line-height: 1.5;
         }
         button.expand-button {
             background: none;
@@ -224,18 +224,14 @@ COMMENTS_CSS = """
             color: #666;
             cursor: pointer;
             font-size: 0.85em;
-            padding: 2px 0;
+            padding: 4px 0;
             opacity: 0.8;
-            margin-top: 5px;
-        }
-        button.expand-button:hover {
-            opacity: 1;
-            color: #999;
+            margin-top: 8px;
+            font-family: monospace;
         }
         .replies {
             margin-top: 12px;
-            padding-top: 5px;
-            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            padding-top: 8px;
         }
     </style>
 """
@@ -315,7 +311,6 @@ try:
                     if is_highlighted:
                         level_label += " 🔍 (Comment From Search)"
                         
-                    # Create a container with custom padding
                     container = st.container()
                     container.markdown(
                         f"""
