@@ -317,6 +317,8 @@ if not post_id:
 # Add sort dropdown in sidebar
 with st.sidebar:
     st.header("Comment Controls")
+    
+    # Sort dropdown
     comment_sort = st.selectbox(
         "Sort comments by",
         ["most_upvotes", "newest", "oldest"],
@@ -326,6 +328,45 @@ with st.sidebar:
             "oldest": "Oldest"
         }[x]
     )
+    
+    # Add expand/collapse all button
+    st.divider()
+    st.subheader("Comment Display")
+    if st.button("Expand All Comments"):
+        st.components.v1.html(
+            """
+            <script>
+                function expandAllComments() {
+                    document.querySelectorAll('.replies').forEach(reply => {
+                        reply.style.display = 'block';
+                    });
+                    document.querySelectorAll('.expand-button').forEach(button => {
+                        button.textContent = button.textContent.replace('[+]', '[-]').replace('Show', 'Hide');
+                    });
+                }
+                window.addEventListener('load', expandAllComments);
+            </script>
+            """,
+            height=0
+        )
+    
+    if st.button("Collapse All Comments"):
+        st.components.v1.html(
+            """
+            <script>
+                function collapseAllComments() {
+                    document.querySelectorAll('.replies').forEach(reply => {
+                        reply.style.display = 'none';
+                    });
+                    document.querySelectorAll('.expand-button').forEach(button => {
+                        button.textContent = button.textContent.replace('[-]', '[+]').replace('Hide', 'Show');
+                    });
+                }
+                window.addEventListener('load', collapseAllComments);
+            </script>
+            """,
+            height=0
+        )
 
 try:
     # Fetch post
