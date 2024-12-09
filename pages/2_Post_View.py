@@ -137,6 +137,7 @@ def display_nested_comments(comments, highlight_comment_id=None):
         }
         .nested-comment {
             background-color: rgba(255, 255, 255, 0.015);
+            margin-left: 52px;
         }
         .comment[data-level="2"] {
             background-color: rgba(255, 255, 255, 0.022);
@@ -189,20 +190,17 @@ def display_nested_comments(comments, highlight_comment_id=None):
             font-family: monospace;
             letter-spacing: 0.5px;
             opacity: 0.9;
+            margin-left: -3px;
         }
         .replies {
             margin-top: 14px;
             position: relative;
+            border-left: 3px solid #555;
+            margin-left: -3px;
+            padding-left: 3px;
         }
-        /* Fix for nested border alignment */
         .replies::before {
-            content: '';
-            position: absolute;
-            left: -3px;
-            top: -14px;  /* Match margin-top of replies */
-            height: 14px;  /* Match margin-top of replies */
-            width: 3px;
-            background: #555;
+            display: none;
         }
         </style>
     """
@@ -239,6 +237,7 @@ COMMENTS_CSS = """
         }
         .nested-comment {
             background-color: rgba(255, 255, 255, 0.015);
+            margin-left: 52px;
         }
         .comment[data-level="2"] {
             background-color: rgba(255, 255, 255, 0.022);
@@ -291,20 +290,17 @@ COMMENTS_CSS = """
             font-family: monospace;
             letter-spacing: 0.5px;
             opacity: 0.9;
+            margin-left: -3px;
         }
         .replies {
             margin-top: 14px;
             position: relative;
+            border-left: 3px solid #555;
+            margin-left: -3px;
+            padding-left: 3px;
         }
-        /* Fix for nested border alignment */
         .replies::before {
-            content: '';
-            position: absolute;
-            left: -3px;
-            top: -14px;  /* Match margin-top of replies */
-            height: 14px;  /* Match margin-top of replies */
-            width: 3px;
-            background: #555;
+            display: none;
         }
     </style>
 """
