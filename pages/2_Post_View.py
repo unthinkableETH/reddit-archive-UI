@@ -31,7 +31,7 @@ def format_comment_html(comment, level, is_highlighted=False):
     """
 
 def display_nested_comments(comments, highlight_comment_id=None):
-    """Display comments in a nested structure"""
+    """Display comments in a nested structure with expanders"""
     comment_dict = {}
     top_level_comments = []
     
@@ -53,11 +53,35 @@ def display_nested_comments(comments, highlight_comment_id=None):
         
         comment = comment_dict[comment_id]['data']
         is_highlighted = comment['id'] == highlight_comment_id
+        replies = comment_dict[comment_id]['replies']
         
-        return format_comment_html(comment, level, is_highlighted) + "".join(
-            build_comment_html(reply_id, level + 1)
-            for reply_id in comment_dict[comment_id]['replies']
-        )
+        # Add expand/collapse button if there are replies
+        expand_button = ""
+        replies_html = ""
+        if replies:
+            expand_button = f"""
+                <button onclick="toggleReplies('{comment['id']}')" class="expand-button" id="button-{comment['id']}">
+                    [+] Show Replies ({len(replies)})
+                </button>
+            """
+            replies_html = f"""
+                <div class="replies" id="replies-{comment['id']}" style="display: none;">
+                    {''.join(build_comment_html(reply_id, level + 1) for reply_id in replies)}
+                </div>
+            """
+        
+        return f"""
+            <div class="comment" data-level="{level}">
+                <div class="comment-header">
+                    <strong>u/{comment['author']}</strong> - 
+                    <span class="level-label">{level_label}</span><br>
+                    <span class="metadata">Score: {comment['score']} | Posted on: {comment['formatted_date']}</span>
+                </div>
+                <div class="comment-body">{comment['body'].strip()}</div>
+                {expand_button}
+                {replies_html}
+            </div>
+        """
     
     comments_html = "".join(build_comment_html(comment_id) for comment_id in top_level_comments)
     
