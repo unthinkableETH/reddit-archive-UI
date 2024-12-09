@@ -368,7 +368,7 @@ try:
                 current_comment = comment_dict.get(current_comment['parent_id'])
             
             if highlighted_chain:
-                st.markdown("### Comment Thread Context")
+                st.header("Comment Thread Context")
                 
                 for i, comment in enumerate(highlighted_chain):
                     is_highlighted = comment['id'] == highlight_comment_id
