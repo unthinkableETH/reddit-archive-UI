@@ -30,6 +30,43 @@ def format_comment_html(comment, level, is_highlighted=False):
     </div>
     """
 
+def display_nested_comments(comments, highlight_comment_id=None):
+    """Display comments in a nested structure"""
+    comment_dict = {}
+    top_level_comments = []
+    
+    # Build comment dictionary and identify top-level comments
+    for comment in comments:
+        comment_dict[comment['id']] = {
+            'data': comment,
+            'replies': []
+        }
+        if comment['parent_id'] == post_id:
+            top_level_comments.append(comment['id'])
+        elif comment['parent_id'] in comment_dict:
+            comment_dict[comment['parent_id']]['replies'].append(comment['id'])
+    
+    # Build HTML for nested comments
+    def build_comment_html(comment_id, level=0):
+        if comment_id not in comment_dict:
+            return ""
+        
+        comment = comment_dict[comment_id]['data']
+        is_highlighted = comment['id'] == highlight_comment_id
+        
+        return format_comment_html(comment, level, is_highlighted) + "".join(
+            build_comment_html(reply_id, level + 1)
+            for reply_id in comment_dict[comment_id]['replies']
+        )
+    
+    comments_html = "".join(build_comment_html(comment_id) for comment_id in top_level_comments)
+    
+    components.html(
+        COMMENTS_CSS + f'<div class="comments-container">{comments_html}</div>',
+        height=800,
+        scrolling=True
+    )
+
 COMMENTS_CSS = """
     <style>
         .comments-container {
@@ -73,6 +110,19 @@ if not post_id:
     st.error("No post ID provided in the URL.")
     st.stop()
 
+# Add sort dropdown in sidebar
+with st.sidebar:
+    st.header("Comment Controls")
+    comment_sort = st.selectbox(
+        "Sort comments by",
+        ["most_upvotes", "newest", "oldest"],
+        format_func=lambda x: {
+            "most_upvotes": "Most Upvotes",
+            "newest": "Newest",
+            "oldest": "Oldest"
+        }[x]
+    )
+
 try:
     # Fetch post
     response = requests.get(f"{API_BASE_URL}/api/posts/{post_id}", timeout=10)
@@ -89,10 +139,10 @@ try:
     )
     st.divider()
     
-    # Fetch comments
+    # Fetch comments with sort
     response = requests.get(
         f"{API_BASE_URL}/api/posts/{post_id}/comments",
-        params={"sort": "most_upvotes"},
+        params={"sort": comment_sort},
         timeout=10
     )
     comments_data = response.json()
@@ -111,7 +161,7 @@ try:
                 current_comment = comment_dict.get(current_comment['parent_id'])
             
             if highlighted_chain:
-                st.header("Comment Thread Context")  # New header text
+                st.header("Comment Thread Context")
                 comments_html = "".join(
                     format_comment_html(comment, i, comment['id'] == highlight_comment_id)
                     for i, comment in enumerate(highlighted_chain)
