@@ -79,6 +79,8 @@ def display_nested_comments(comments, highlight_comment_id=None):
             return ""
         
         comment = comment_dict[comment_id]['data']
+        is_highlighted = comment['id'] == highlight_comment_id
+        highlight_style = 'background-color: rgba(255, 165, 0, 0.1);' if is_highlighted else ''
         
         # Skip deleted comments
         if comment['body'] in ['[deleted]', '[removed]']:
@@ -119,7 +121,7 @@ def display_nested_comments(comments, highlight_comment_id=None):
                     <span class="level-label">{level_label}</span><br>
                     <span class="metadata">Score: {comment['score']} | Posted on: {format_date(comment['created_utc'])}</span>
                 </div>
-                <p class="comment-body">{body}</p>
+                <p class="comment-body" style="{highlight_style}">{body}</p>
                 {expand_button}
                 <div class="replies" id="replies-{comment['id']}" style="display: none;">
                     {''.join(build_comment_html(reply_id, level + 1) for reply_id in valid_replies)}
@@ -293,21 +295,69 @@ try:
             # Display highlighted chain
             if highlighted_chain:
                 st.header("Highlighted Comment Thread")
+                comments_html = ""
+                
                 for i, comment in enumerate(highlighted_chain):
                     is_highlighted = comment['id'] == highlight_comment_id
-                    style = "background-color: rgba(255, 0, 0, 0.1);" if is_highlighted else ""
+                    level = i  # Level increases as we go deeper in the chain
                     
-                    # Display comment with metadata
-                    st.markdown(
-                        f"""<div style='padding: 8px; border-left: 2px solid #ccc;'>
-                            <strong>u/{comment['author']}</strong> | 
-                            Score: {comment['score']} | 
-                            Posted on: {comment['formatted_date']}
-                            <div style="{style}">{comment['body']}</div>
-                        </div>""",
-                        unsafe_allow_html=True
-                    )
-                    st.divider()
+                    # Format level label like in the main comments section
+                    level_label = {
+                        0: "Reply to Original Post (Level 1)",
+                        1: "Reply to Original Comment (Level 2)",
+                    }.get(level, f"Level {level + 1} Reply")
+                    
+                    # Create HTML for the comment similar to main comments section
+                    comments_html += f"""
+                        <div class="comment" data-level="{level}">
+                            <div class="comment-header">
+                                <strong>u/{comment['author']}</strong> - 
+                                <span class="level-label">{level_label}</span><br>
+                                <span class="metadata">Score: {comment['score']} | Posted on: {comment['formatted_date']}</span>
+                            </div>
+                            <p class="comment-body" style="background-color: {'rgba(255, 165, 0, 0.1)' if is_highlighted else 'transparent'}">
+                                {comment['body']}
+                            </p>
+                        </div>
+                    """
+                
+                # Display the highlighted chain with the same styling as main comments
+                components.html(
+                    f"""
+                    <style>
+                        .comment {{
+                            margin-left: calc(var(--level) * 20px);
+                            margin-bottom: 1em;
+                            padding: 10px;
+                            border-left: 2px solid #ccc;
+                        }}
+                        .comment[data-level="0"] {{ margin-left: 0; }}
+                        .comment-header {{
+                            margin-bottom: 0.5em;
+                            font-size: 0.9em;
+                        }}
+                        .level-label {{
+                            color: #666;
+                            font-style: italic;
+                        }}
+                        .metadata {{
+                            color: #666;
+                            font-size: 0.9em;
+                        }}
+                        .comment-body {{
+                            margin: 0;
+                            padding: 5px;
+                            white-space: pre-wrap;
+                        }}
+                    </style>
+                    <div class="comments-container">
+                        {comments_html}
+                    </div>
+                    """,
+                    height=400,
+                    scrolling=True
+                )
+                st.divider()
         
         # Display all comments in nested structure
         st.header(f"All Comments ({comments_data['total_comments']})")
