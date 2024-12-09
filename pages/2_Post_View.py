@@ -181,76 +181,102 @@ COMMENTS_CSS = """
     <style>
         .comments-container {
             color: white;
+            max-width: 1200px;  /* Limit width for better readability */
+            margin: 0 auto;     /* Center content */
         }
         .comment {
-            margin-left: calc(var(--level) * 50px);
-            margin-bottom: 1.2em;
-            padding: 15px 18px;  /* Slightly more horizontal padding */
-            border-left: 2px solid #666;
-            position: relative;  /* For nested styling */
+            margin-left: calc(var(--level) * 55px);  /* Slightly increased indentation */
+            margin-bottom: 1.4em;
+            padding: 18px 22px;  /* More padding for breathing room */
+            border-left: 3px solid #555;  /* Slightly thicker border */
+            position: relative;
+            line-height: 1.6;   /* Better line height for readability */
         }
         .comment[data-level="0"] { 
             margin-left: 0; 
-            margin-bottom: 1.5em;  /* More space between top-level comments */
+            margin-bottom: 2em;    /* More space between top-level comments */
+            border-left: 3px solid #666;  /* Distinct border for top level */
         }
         .nested-comment {
-            background-color: rgba(255, 255, 255, 0.015);  /* Very subtle */
+            background-color: rgba(255, 255, 255, 0.015);
         }
         .comment[data-level="2"] {
-            background-color: rgba(255, 255, 255, 0.02);  /* Slightly more visible */
+            background-color: rgba(255, 255, 255, 0.022);
         }
         .comment[data-level="3"] {
-            background-color: rgba(255, 255, 255, 0.025);  /* Deeper nesting */
+            background-color: rgba(255, 255, 255, 0.029);
         }
         .comment-header {
-            margin-bottom: 0.8em;
-            font-size: 0.9em;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.07);
-            padding-bottom: 8px;
+            margin-bottom: 1em;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .author {
+            color: #fff;
+            font-weight: 500;
+            font-size: 0.95em;
         }
         .level-label {
-            color: #999;
+            color: #888;
             font-style: italic;
-            margin-left: 4px;
+            font-size: 0.9em;
         }
         .metadata {
-            color: #999;
-            font-size: 0.9em;
-            margin-top: 3px;
-            display: block;
+            color: #777;
+            font-size: 0.85em;
+            margin-top: 2px;
         }
         .comment-body {
             margin: 0;
-            padding: 10px 5px;
+            padding: 5px 0 10px 0;
             white-space: pre-wrap;
-            line-height: 1.5;
-            font-size: 0.95em;  /* Slightly smaller for better readability */
+            font-size: 0.95em;
+            color: rgba(255, 255, 255, 0.9);  /* Slightly softer white for better reading */
+            letter-spacing: 0.2px;
+            word-spacing: 0.5px;
         }
         button.expand-button {
             background: none;
             border: none;
-            color: #777;  /* Slightly lighter */
+            color: #888;
             cursor: pointer;
             font-size: 0.85em;
-            padding: 4px 0;
+            padding: 6px 0;
             margin-top: 8px;
             font-family: monospace;
-            letter-spacing: 0.5px;  /* Better spacing for the text */
+            letter-spacing: 0.5px;
+            opacity: 0.9;
         }
         .replies {
-            margin-top: 12px;
-            padding-top: 8px;
+            margin-top: 14px;
+            padding-top: 10px;
             position: relative;
         }
-        /* Subtle line to connect nested comments */
         .replies::before {
             content: '';
             position: absolute;
-            left: -2px;
+            left: -3px;  /* Match thicker border */
             top: 0;
-            height: 8px;
-            width: 2px;
-            background: #666;
+            height: 10px;
+            width: 3px;
+            background: #555;
+        }
+        /* Add subtle depth markers */
+        .comment::after {
+            content: '';
+            position: absolute;
+            left: -8px;
+            top: 50%;
+            width: 5px;
+            height: 5px;
+            background: #555;
+            border-radius: 50%;
+        }
+        .comment[data-level="0"]::after {
+            display: none;
         }
     </style>
 """
