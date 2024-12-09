@@ -116,19 +116,38 @@ def display_nested_comments(comments, highlight_comment_id=None):
         "</style>",
         """
         .comment {
-            margin-left: calc(var(--level) * 25px);  /* Increased indentation */
+            margin-left: calc(var(--level) * 35px);  /* Increased indentation */
             margin-bottom: 1em;
             padding: 10px;
-            border-left: 2px solid #666;  /* Darker border */
-            background-color: rgba(255, 255, 255, 0.02);  /* Subtle background */
+            border-left: 2px solid #666;
         }
-        .expand-wrapper {
-            margin: 5px 0;
+        .comment[data-level="0"] { 
+            margin-left: 0; 
+        }
+        .nested-comment {
+            background-color: rgba(255, 255, 255, 0.02);  /* Subtle background for nested comments */
+        }
+        .comment-header {
+            margin-bottom: 0.5em;
+            font-size: 0.9em;
+        }
+        .level-label {
+            color: #999;
+            font-style: italic;
+        }
+        .metadata {
+            color: #999;
+            font-size: 0.9em;
+        }
+        .comment-body {
+            margin: 0;
+            padding: 10px;
+            white-space: pre-wrap;
         }
         button.expand-button {
             background: none;
             border: none;
-            color: #666;  /* Dimmer color */
+            color: #666;
             cursor: pointer;
             font-size: 0.85em;
             padding: 2px 0;
@@ -159,13 +178,16 @@ COMMENTS_CSS = """
             color: white;
         }
         .comment {
-            margin-left: calc(var(--level) * 20px);
+            margin-left: calc(var(--level) * 35px);  /* Increased indentation */
             margin-bottom: 1em;
             padding: 10px;
-            border-left: 2px solid #ccc;
+            border-left: 2px solid #666;
         }
         .comment[data-level="0"] { 
             margin-left: 0; 
+        }
+        .nested-comment {
+            background-color: rgba(255, 255, 255, 0.02);  /* Subtle background for nested comments */
         }
         .comment-header {
             margin-bottom: 0.5em;
@@ -183,6 +205,21 @@ COMMENTS_CSS = """
             margin: 0;
             padding: 10px;
             white-space: pre-wrap;
+        }
+        button.expand-button {
+            background: none;
+            border: none;
+            color: #666;
+            cursor: pointer;
+            font-size: 0.85em;
+            padding: 2px 0;
+            opacity: 0.8;
+        }
+        button.expand-button:hover {
+            opacity: 1;
+        }
+        .replies {
+            margin-top: 10px;
         }
     </style>
 """
@@ -251,15 +288,37 @@ try:
             
             if highlighted_chain:
                 st.header("Comment Thread Context")
-                comments_html = "".join(
-                    format_comment_html(comment, i, comment['id'] == highlight_comment_id)
-                    for i, comment in enumerate(highlighted_chain)
-                )
+                comments_html = ""
                 
+                for i, comment in enumerate(highlighted_chain):
+                    is_highlighted = comment['id'] == highlight_comment_id
+                    level_label = {
+                        0: "Reply to Original Post (Level 1)",
+                        1: "Reply to Original Comment (Level 2)",
+                    }.get(i, f"Level {i + 1} Reply")
+                    
+                    if is_highlighted:
+                        level_label += " 🔍 (Comment From Search)"
+                        
+                    # Add nested-comment class for non-top-level comments
+                    comment_class = "comment"
+                    if i > 0:
+                        comment_class += " nested-comment"
+                        
+                    comments_html += f"""
+                    <div class="{comment_class}" data-level="{i}">
+                        <div class="comment-header">
+                            <strong>u/{comment['author']}</strong> - 
+                            <span class="level-label">{level_label}</span><br>
+                            <span class="metadata">Score: {comment['score']} | Posted on: {comment['formatted_date']}</span>
+                        </div>
+                        <div class="comment-body">{comment['body'].strip()}</div>
+                    </div>
+                    """
+                
+                # Display without scrolling container
                 components.html(
-                    COMMENTS_CSS + f'<div class="comments-container">{comments_html}</div>',
-                    height=400,
-                    scrolling=True
+                    COMMENTS_CSS + f'<div class="comments-container">{comments_html}</div>'
                 )
                 st.divider()
         
