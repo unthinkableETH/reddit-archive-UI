@@ -332,41 +332,71 @@ with st.sidebar:
     # Add expand/collapse all button
     st.divider()
     st.subheader("Comment Display")
-    if st.button("Expand All Comments"):
-        st.components.v1.html(
-            """
-            <script>
-                function expandAllComments() {
-                    document.querySelectorAll('.replies').forEach(reply => {
-                        reply.style.display = 'block';
-                    });
-                    document.querySelectorAll('.expand-button').forEach(button => {
-                        button.textContent = button.textContent.replace('[+]', '[-]').replace('Show', 'Hide');
-                    });
-                }
-                window.addEventListener('load', expandAllComments);
-            </script>
-            """,
-            height=0
-        )
+    col1, col2 = st.columns(2)
     
-    if st.button("Collapse All Comments"):
-        st.components.v1.html(
-            """
-            <script>
-                function collapseAllComments() {
-                    document.querySelectorAll('.replies').forEach(reply => {
-                        reply.style.display = 'none';
-                    });
-                    document.querySelectorAll('.expand-button').forEach(button => {
-                        button.textContent = button.textContent.replace('[-]', '[+]').replace('Hide', 'Show');
-                    });
-                }
-                window.addEventListener('load', collapseAllComments);
-            </script>
-            """,
-            height=0
-        )
+    with col1:
+        if st.button("Expand All"):
+            st.components.v1.html(
+                """
+                <script>
+                    function expandAllComments() {
+                        const replies = document.querySelectorAll('.replies');
+                        const buttons = document.querySelectorAll('.expand-button');
+                        
+                        replies.forEach(reply => {
+                            reply.style.display = 'block';
+                        });
+                        
+                        buttons.forEach(button => {
+                            const text = button.textContent;
+                            const count = text.match(/\d+/)[0];
+                            button.textContent = `[-] Hide ${count} replies`;
+                            button.classList.add('expanded');
+                        });
+                    }
+                    
+                    // Ensure DOM is loaded
+                    if (document.readyState === 'complete') {
+                        expandAllComments();
+                    } else {
+                        window.addEventListener('load', expandAllComments);
+                    }
+                </script>
+                """,
+                height=0
+            )
+    
+    with col2:
+        if st.button("Collapse All"):
+            st.components.v1.html(
+                """
+                <script>
+                    function collapseAllComments() {
+                        const replies = document.querySelectorAll('.replies');
+                        const buttons = document.querySelectorAll('.expand-button');
+                        
+                        replies.forEach(reply => {
+                            reply.style.display = 'none';
+                        });
+                        
+                        buttons.forEach(button => {
+                            const text = button.textContent;
+                            const count = text.match(/\d+/)[0];
+                            button.textContent = `[+] Show ${count} replies`;
+                            button.classList.remove('expanded');
+                        });
+                    }
+                    
+                    // Ensure DOM is loaded
+                    if (document.readyState === 'complete') {
+                        collapseAllComments();
+                    } else {
+                        window.addEventListener('load', collapseAllComments);
+                    }
+                </script>
+                """,
+                height=0
+            )
 
 try:
     # Fetch post
