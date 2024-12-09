@@ -329,35 +329,44 @@ with st.sidebar:
         }[x]
     )
     
-    # Add expand/collapse all button
+    # Add expand/collapse all buttons
     st.divider()
     st.subheader("Comment Display")
     col1, col2 = st.columns(2)
+    
+    # Add this JavaScript to the page once
+    st.components.v1.html(
+        """
+        <script>
+        function toggleAllComments(shouldExpand) {
+            // Get all reply containers
+            const replies = document.getElementsByClassName('replies');
+            const buttons = document.getElementsByClassName('expand-button');
+            
+            // Convert to arrays for easier manipulation
+            Array.from(replies).forEach(reply => {
+                reply.style.display = shouldExpand ? 'block' : 'none';
+            });
+            
+            Array.from(buttons).forEach(button => {
+                const count = button.textContent.match(/\d+/)[0];
+                const plural = count === '1' ? 'reply' : 'replies';
+                button.textContent = shouldExpand ? 
+                    `[-] Hide ${count} ${plural}` : 
+                    `[+] Show ${count} ${plural}`;
+            });
+        }
+        </script>
+        """,
+        height=0
+    )
     
     with col1:
         if st.button("Expand All"):
             st.components.v1.html(
                 """
                 <script>
-                    function waitForElements() {
-                        const replies = document.querySelectorAll('.replies');
-                        if (replies.length > 0) {
-                            replies.forEach(reply => {
-                                reply.style.display = 'block';
-                            });
-                            
-                            document.querySelectorAll('.expand-button').forEach(button => {
-                                const replyCount = button.textContent.match(/\d+/)[0];
-                                const plural = replyCount === '1' ? 'reply' : 'replies';
-                                button.textContent = `[-] Hide ${replyCount} ${plural}`;
-                            });
-                        } else {
-                            setTimeout(waitForElements, 100);
-                        }
-                    }
-                    
-                    // Start checking for elements
-                    waitForElements();
+                    toggleAllComments(true);
                 </script>
                 """,
                 height=0
@@ -368,24 +377,7 @@ with st.sidebar:
             st.components.v1.html(
                 """
                 <script>
-                    function collapseAllComments() {
-                        document.querySelectorAll('.replies').forEach(reply => {
-                            reply.style.display = 'none';
-                        });
-                        
-                        document.querySelectorAll('.expand-button').forEach(button => {
-                            const replyCount = button.textContent.match(/\d+/)[0];
-                            const plural = replyCount === '1' ? 'reply' : 'replies';
-                            button.textContent = `[+] Show ${replyCount} ${plural}`;
-                        });
-                    }
-                    
-                    // Ensure DOM is loaded
-                    if (document.readyState === 'complete') {
-                        collapseAllComments();
-                    } else {
-                        window.addEventListener('load', collapseAllComments);
-                    }
+                    toggleAllComments(false);
                 </script>
                 """,
                 height=0
