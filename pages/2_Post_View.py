@@ -218,6 +218,29 @@ def display_nested_comments(comments, highlight_comment_id=None):
         scrolling=True
     )
 
+def format_comment_html(comment, level, is_highlighted=False):
+    """Helper function to format comment HTML consistently"""
+    level_label = {
+        0: "Reply to Original Post (Level 1)",
+        1: "Reply to Original Comment (Level 2)",
+    }.get(level, f"Level {level + 1} Reply")
+    
+    if is_highlighted:
+        level_label += " 🔍 (Comment from search)"
+    
+    return f"""
+        <div class="comment" data-level="{level}">
+            <div class="comment-header">
+                <strong>u/{comment['author']}</strong> - 
+                <span class="level-label">{level_label}</span><br>
+                <span class="metadata">Score: {comment['score']} | Posted on: {comment['formatted_date']}</span>
+            </div>
+            <div class="comment-body" style="background-color: {'rgba(255, 165, 0, 0.1)' if is_highlighted else 'transparent'}">
+                {comment['body'].strip()}
+            </div>
+        </div>
+    """
+
 # Get post and comment IDs from URL parameters
 params = st.query_params
 post_id = params.get("post_id")
@@ -302,60 +325,41 @@ try:
                 
                 for i, comment in enumerate(highlighted_chain):
                     is_highlighted = comment['id'] == highlight_comment_id
-                    level = i  # Level increases as we go deeper in the chain
-                    
-                    # Format level label with search indicator
-                    level_label = {
-                        0: "Reply to Original Post (Level 1)",
-                        1: "Reply to Original Comment (Level 2)",
-                    }.get(level, f"Level {level + 1} Reply")
-                    
-                    if is_highlighted:
-                        level_label += " 🔍 (Comment from search)"
-                    
-                    comments_html += f"""
-                        <div class="comment" data-level="{level}">
-                            <div class="comment-header">
-                                <strong>u/{comment['author']}</strong> - 
-                                <span class="level-label">{level_label}</span><br>
-                                <span class="metadata">Score: {comment['score']} | Posted on: {comment['formatted_date']}</span>
-                            </div>
-                            <p class="comment-body" style="background-color: {'rgba(255, 165, 0, 0.1)' if is_highlighted else 'transparent'}; color: white;">
-                                {comment['body']}
-                            </p>
-                        </div>
-                    """
+                    comments_html += format_comment_html(comment, i, is_highlighted)
                 
-                # Display the highlighted chain with updated styling
-                components.html(
-                    f"""
+                # Common CSS for both sections
+                COMMENTS_CSS = """
                     <style>
-                        .comment {{
+                        .comment {
                             margin-left: calc(var(--level) * 20px);
                             margin-bottom: 1em;
                             padding: 10px;
                             border-left: 2px solid #ccc;
-                            color: white;  /* Set text color to white */
-                        }}
-                        .comment[data-level="0"] {{ margin-left: 0; }}
-                        .comment-header {{
+                        }
+                        .comment[data-level="0"] { margin-left: 0; }
+                        .comment-header {
                             margin-bottom: 0.5em;
                             font-size: 0.9em;
-                        }}
-                        .level-label {{
-                            color: #999;  /* Lighter gray for better visibility */
+                        }
+                        .level-label {
+                            color: #999;
                             font-style: italic;
-                        }}
-                        .metadata {{
-                            color: #999;  /* Lighter gray for better visibility */
+                        }
+                        .metadata {
+                            color: #999;
                             font-size: 0.9em;
-                        }}
-                        .comment-body {{
+                        }
+                        .comment-body {
                             margin: 0;
-                            padding: 5px;
+                            padding: 10px;
                             white-space: pre-wrap;
-                        }}
+                        }
                     </style>
+                """
+                
+                # Display comments with consistent styling
+                components.html(
+                    COMMENTS_CSS + f"""
                     <div class="comments-container">
                         {comments_html}
                     </div>
