@@ -302,6 +302,71 @@ COMMENTS_CSS = """
         .replies::before {
             display: none;
         }
+        
+        /* Add smooth transitions */
+        .comment {
+            transition: border-color 0.3s ease;
+        }
+        
+        /* Improve expand button interaction */
+        button.expand-button {
+            position: relative;
+            padding-left: 20px;
+        }
+        
+        button.expand-button::before {
+            content: '[+]';
+            position: absolute;
+            left: 0;
+            transition: transform 0.2s ease;
+        }
+        
+        button.expand-button.expanded::before {
+            content: '[-]';
+        }
+        
+        /* Add subtle depth indicators */
+        .comment::after {
+            content: attr(data-level);
+            position: absolute;
+            right: 10px;
+            top: 10px;
+            font-size: 0.7em;
+            color: rgba(255, 255, 255, 0.2);
+            font-family: monospace;
+        }
+        
+        /* Improve metadata readability */
+        .metadata {
+            display: flex;
+            gap: 15px;
+            color: #777;
+        }
+        
+        .metadata span {
+            white-space: nowrap;
+        }
+        
+        /* Add subtle hover effect for expand buttons */
+        button.expand-button:hover {
+            color: #aaa;
+        }
+        
+        /* Improve readability of long comments */
+        .comment-body {
+            max-width: 80ch;  /* Optimal reading width */
+        }
+        
+        /* Add subtle separator between top-level comments */
+        .comment[data-level="0"]:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            bottom: -1em;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(to right, rgba(255,255,255,0.1), transparent);
+        }
     </style>
 """
 
@@ -317,6 +382,8 @@ if not post_id:
 # Add sort dropdown in sidebar
 with st.sidebar:
     st.header("Comment Controls")
+    
+    # Sort dropdown (existing)
     comment_sort = st.selectbox(
         "Sort comments by",
         ["most_upvotes", "newest", "oldest"],
@@ -326,6 +393,38 @@ with st.sidebar:
             "oldest": "Oldest"
         }[x]
     )
+    
+    # Add search functionality
+    st.divider()
+    st.subheader("Search Comments")
+    search_query = st.text_input("Search for text in comments", key="comment_search")
+    case_sensitive = st.checkbox("Case sensitive", value=False)
+    
+    if search_query:
+        # Add JavaScript for search highlighting
+        st.markdown("""
+            <script>
+                function highlightText(text) {
+                    const comments = document.querySelectorAll('.comment-body');
+                    const query = """ + f"{'text' if case_sensitive else 'text.toLowerCase()'}" + """;
+                    
+                    comments.forEach(comment => {
+                        let content = comment.innerHTML;
+                        let searchContent = """ + f"{'content' if case_sensitive else 'content.toLowerCase()'}" + """;
+                        
+                        if (searchContent.includes(query)) {
+                            comment.closest('.comment').style.borderLeft = '3px solid #ffd700';
+                            comment.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        } else {
+                            comment.closest('.comment').style.borderLeft = '3px solid #555';
+                        }
+                    });
+                }
+                
+                // Call search when loaded
+                window.addEventListener('load', () => highlightText('""" + search_query + """'));
+            </script>
+        """, unsafe_allow_html=True)
 
 try:
     # Fetch post
