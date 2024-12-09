@@ -69,9 +69,11 @@ def display_nested_comments(comments, highlight_comment_id=None):
         replies_html = ""
         if replies:
             expand_button = f"""
-                <button onclick="toggleReplies('{comment['id']}')" class="expand-button" id="button-{comment['id']}">
-                    [+] Show Replies ({len(replies)})
-                </button>
+                <div class="expand-wrapper">
+                    <button onclick="toggleReplies('{comment['id']}')" class="expand-button" id="button-{comment['id']}">
+                        [+] Show {len(replies)} repl{'y' if len(replies) == 1 else 'ies'}
+                    </button>
+                </div>
             """
             replies_html = f"""
                 <div class="replies" id="replies-{comment['id']}" style="display: none;">
@@ -109,26 +111,43 @@ def display_nested_comments(comments, highlight_comment_id=None):
         </script>
     """
     
-    # Add CSS for expand button
-    expand_button_css = """
-        .expand-button {
-            background: none;
-            border: none;
-            color: #999;
-            cursor: pointer;
-            font-size: 0.9em;
-            padding: 5px 0;
+    # Update CSS to be included in COMMENTS_CSS
+    updated_css = COMMENTS_CSS.replace(
+        "</style>",
+        """
+        .comment {
+            margin-left: calc(var(--level) * 25px);  /* Increased indentation */
+            margin-bottom: 1em;
+            padding: 10px;
+            border-left: 2px solid #666;  /* Darker border */
+            background-color: rgba(255, 255, 255, 0.02);  /* Subtle background */
+        }
+        .expand-wrapper {
             margin: 5px 0;
         }
-        .expand-button:hover {
-            color: #fff;
+        button.expand-button {
+            background: none;
+            border: none;
+            color: #666;  /* Dimmer color */
+            cursor: pointer;
+            font-size: 0.85em;
+            padding: 2px 0;
+            opacity: 0.8;
         }
+        button.expand-button:hover {
+            opacity: 1;
+        }
+        .replies {
+            margin-top: 10px;
+        }
+        </style>
     """
+    )
     
     comments_html = "".join(build_comment_html(comment_id) for comment_id in top_level_comments)
     
     components.html(
-        COMMENTS_CSS + expand_button_css + js_code + 
+        updated_css + js_code + 
         f'<div class="comments-container">{comments_html}</div>',
         height=800,
         scrolling=True
@@ -209,7 +228,10 @@ try:
     # Fetch comments with sort
     response = requests.get(
         f"{API_BASE_URL}/api/posts/{post_id}/comments",
-        params={"sort": comment_sort},
+        params={
+            "sort": comment_sort,
+            "limit": 10000  # High limit to ensure we get all comments
+        },
         timeout=10
     )
     comments_data = response.json()
