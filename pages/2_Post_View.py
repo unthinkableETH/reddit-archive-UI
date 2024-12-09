@@ -299,9 +299,12 @@ try:
                     if is_highlighted:
                         level_label += " 🔍 (Comment From Search)"
                         
-                    # Add indentation using columns
-                    cols = st.columns([i * 2, 20 - (i * 2)])
-                    with cols[1]:
+                    # Calculate column ratios properly
+                    indent = min(i, 4)  # Limit max indentation
+                    col_ratios = [1] * indent + [10]  # One part for each indent level, 10 parts for content
+                    
+                    cols = st.columns(col_ratios)
+                    with cols[-1]:  # Use last column for content
                         st.markdown(f"**u/{comment['author']}** - _{level_label}_")
                         st.markdown(f"Score: {comment['score']} | Posted on: {comment['formatted_date']}")
                         st.markdown(comment['body'])
