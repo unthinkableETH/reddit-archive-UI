@@ -80,15 +80,19 @@ def display_nested_comments(comments, highlight_comment_id=None):
             """
         
         return f"""
-            <div class="comment" data-level="{level}">
+            <div class="comment {' nested-comment' if level > 0 else ''}" data-level="{level}">
                 <div class="comment-header">
-                    <strong>u/{comment['author']}</strong> - 
-                    <span class="level-label">{level_label}</span><br>
-                    <span class="metadata">Score: {comment['score']} | Posted on: {comment['formatted_date']}</span>
+                    <div class="author-line">
+                        <span class="author">u/{comment['author']}</span>
+                        <span class="level-label">- {level_label}</span>
+                    </div>
+                    <div class="metadata">Score: {comment['score']} | Posted on: {comment['formatted_date']}</div>
                 </div>
                 <div class="comment-body">{comment['body'].strip()}</div>
-                {expand_button}
-                {replies_html}
+                {expand_button if replies else ''}
+                <div class="replies" id="replies-{comment['id']}" style="display: none;">
+                    {''.join(build_comment_html(reply_id, level + 1) for reply_id in replies)}
+                </div>
             </div>
         """
     
@@ -113,56 +117,92 @@ def display_nested_comments(comments, highlight_comment_id=None):
     updated_css = COMMENTS_CSS.replace(
         "</style>",
         """
-        .comment {
-            margin-left: calc(var(--level) * 50px);
-            margin-bottom: 1.2em;
-            padding: 15px;
-            border-left: 2px solid #666;
+        .comments-container {
+            color: white;
+            max-width: 1200px;
+            margin: 0 auto;
         }
-        .comment[data-level="0"] {
-            margin-left: 0;
+        .comment {
+            margin-left: calc(var(--level) * 55px);
+            margin-bottom: 1.4em;
+            padding: 18px 22px;
+            border-left: 3px solid #555;
+            position: relative;
+            line-height: 1.6;
+        }
+        .comment[data-level="0"] { 
+            margin-left: 0; 
+            margin-bottom: 2em;
+            border-left: 3px solid #666;
         }
         .nested-comment {
-            background-color: rgba(255, 255, 255, 0.02);
-            border-left: 2px solid #777;
+            background-color: rgba(255, 255, 255, 0.015);
+        }
+        .comment[data-level="2"] {
+            background-color: rgba(255, 255, 255, 0.022);
+        }
+        .comment[data-level="3"] {
+            background-color: rgba(255, 255, 255, 0.029);
         }
         .comment-header {
-            margin-bottom: 0.8em;
-            font-size: 0.9em;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 1em;
             padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .author-line {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+        .author {
+            color: #fff;
+            font-weight: 500;
+            font-size: 0.95em;
         }
         .level-label {
-            color: #999;
+            color: #888;
             font-style: italic;
-            margin-left: 4px;
+            font-size: 0.9em;
         }
         .metadata {
-            color: #999;
-            font-size: 0.9em;
-            margin-top: 3px;
-            display: block;
+            color: #777;
+            font-size: 0.85em;
         }
         .comment-body {
             margin: 0;
-            padding: 10px 5px;
+            padding: 5px 0 10px 0;
             white-space: pre-wrap;
-            line-height: 1.5;
+            font-size: 0.95em;
+            color: rgba(255, 255, 255, 0.9);
+            letter-spacing: 0.2px;
+            word-spacing: 0.5px;
         }
         button.expand-button {
             background: none;
             border: none;
-            color: #666;
+            color: #888;
             cursor: pointer;
             font-size: 0.85em;
-            padding: 4px 0;
-            opacity: 0.8;
+            padding: 6px 0;
             margin-top: 8px;
             font-family: monospace;
+            letter-spacing: 0.5px;
+            opacity: 0.9;
         }
         .replies {
-            margin-top: 12px;
-            padding-top: 8px;
+            margin-top: 14px;
+            position: relative;
+        }
+        /* Fix for nested border alignment */
+        .replies::before {
+            content: '';
+            position: absolute;
+            left: -3px;
+            top: -14px;  /* Match margin-top of replies */
+            height: 14px;  /* Match margin-top of replies */
+            width: 3px;
+            background: #555;
         }
         </style>
     """
@@ -181,21 +221,21 @@ COMMENTS_CSS = """
     <style>
         .comments-container {
             color: white;
-            max-width: 1200px;  /* Limit width for better readability */
-            margin: 0 auto;     /* Center content */
+            max-width: 1200px;
+            margin: 0 auto;
         }
         .comment {
-            margin-left: calc(var(--level) * 55px);  /* Slightly increased indentation */
+            margin-left: calc(var(--level) * 55px);
             margin-bottom: 1.4em;
-            padding: 18px 22px;  /* More padding for breathing room */
-            border-left: 3px solid #555;  /* Slightly thicker border */
+            padding: 18px 22px;
+            border-left: 3px solid #555;
             position: relative;
-            line-height: 1.6;   /* Better line height for readability */
+            line-height: 1.6;
         }
         .comment[data-level="0"] { 
             margin-left: 0; 
-            margin-bottom: 2em;    /* More space between top-level comments */
-            border-left: 3px solid #666;  /* Distinct border for top level */
+            margin-bottom: 2em;
+            border-left: 3px solid #666;
         }
         .nested-comment {
             background-color: rgba(255, 255, 255, 0.015);
@@ -208,11 +248,14 @@ COMMENTS_CSS = """
         }
         .comment-header {
             margin-bottom: 1em;
-            padding-bottom: 10px;
+            padding-bottom: 8px;
             border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .author-line {
             display: flex;
-            flex-direction: column;
-            gap: 4px;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
         }
         .author {
             color: #fff;
@@ -227,14 +270,13 @@ COMMENTS_CSS = """
         .metadata {
             color: #777;
             font-size: 0.85em;
-            margin-top: 2px;
         }
         .comment-body {
             margin: 0;
             padding: 5px 0 10px 0;
             white-space: pre-wrap;
             font-size: 0.95em;
-            color: rgba(255, 255, 255, 0.9);  /* Slightly softer white for better reading */
+            color: rgba(255, 255, 255, 0.9);
             letter-spacing: 0.2px;
             word-spacing: 0.5px;
         }
@@ -252,31 +294,17 @@ COMMENTS_CSS = """
         }
         .replies {
             margin-top: 14px;
-            padding-top: 10px;
             position: relative;
         }
+        /* Fix for nested border alignment */
         .replies::before {
             content: '';
             position: absolute;
-            left: -3px;  /* Match thicker border */
-            top: 0;
-            height: 10px;
+            left: -3px;
+            top: -14px;  /* Match margin-top of replies */
+            height: 14px;  /* Match margin-top of replies */
             width: 3px;
             background: #555;
-        }
-        /* Add subtle depth markers */
-        .comment::after {
-            content: '';
-            position: absolute;
-            left: -8px;
-            top: 50%;
-            width: 5px;
-            height: 5px;
-            background: #555;
-            border-radius: 50%;
-        }
-        .comment[data-level="0"]::after {
-            display: none;
         }
     </style>
 """
