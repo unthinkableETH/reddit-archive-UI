@@ -339,34 +339,39 @@ with st.sidebar:
         """
         <script>
         function expandAll() {
-            setTimeout(function() {
-                var replies = document.getElementsByClassName('replies');
-                for (var i = 0; i < replies.length; i++) {
-                    replies[i].style.display = 'block';
+            // Find the comments container
+            var container = document.querySelector('.comments-container');
+            if (container) {
+                // Get all reply sections within the container
+                var allReplies = container.getElementsByClassName('replies');
+                for (var i = 0; i < allReplies.length; i++) {
+                    allReplies[i].style.display = 'block';
                 }
                 
-                var buttons = document.getElementsByClassName('expand-button');
-                for (var i = 0; i < buttons.length; i++) {
-                    var text = buttons[i].textContent;
-                    var count = text.match(/\d+/)[0];
-                    var plural = count === '1' ? 'reply' : 'replies';
-                    buttons[i].textContent = `[-] Hide ${count} ${plural}`;
+                // Update all expand buttons
+                var allButtons = container.getElementsByClassName('expand-button');
+                for (var i = 0; i < allButtons.length; i++) {
+                    var button = allButtons[i];
+                    var numReplies = button.textContent.match(/\d+/)[0];
+                    button.textContent = `[-] Hide ${numReplies} ${numReplies === '1' ? 'reply' : 'replies'}`;
                 }
-            }, 100);
+            }
         }
 
         function collapseAll() {
-            var replies = document.getElementsByClassName('replies');
-            for (var i = 0; i < replies.length; i++) {
-                replies[i].style.display = 'none';
-            }
-            
-            var buttons = document.getElementsByClassName('expand-button');
-            for (var i = 0; i < buttons.length; i++) {
-                var text = buttons[i].textContent;
-                var count = text.match(/\d+/)[0];
-                var plural = count === '1' ? 'reply' : 'replies';
-                buttons[i].textContent = `[+] Show ${count} ${plural}`;
+            var container = document.querySelector('.comments-container');
+            if (container) {
+                var allReplies = container.getElementsByClassName('replies');
+                for (var i = 0; i < allReplies.length; i++) {
+                    allReplies[i].style.display = 'none';
+                }
+                
+                var allButtons = container.getElementsByClassName('expand-button');
+                for (var i = 0; i < allButtons.length; i++) {
+                    var button = allButtons[i];
+                    var numReplies = button.textContent.match(/\d+/)[0];
+                    button.textContent = `[+] Show ${numReplies} ${numReplies === '1' ? 'reply' : 'replies'}`;
+                }
             }
         }
         </script>
@@ -379,6 +384,13 @@ with st.sidebar:
             st.components.v1.html(
                 """
                 <script>
+                    document.addEventListener('DOMContentLoaded', function() {
+                        expandAll();
+                    });
+                    window.addEventListener('load', function() {
+                        expandAll();
+                    });
+                    // Also try immediate execution
                     expandAll();
                 </script>
                 """,
