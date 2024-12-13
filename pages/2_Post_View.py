@@ -32,6 +32,8 @@ def format_comment_html(comment, level, is_highlighted=False):
 
 def display_nested_comments(comments, highlight_comment_id=None):
     """Display comments in a nested structure with expanders"""
+    print(f"Total comments to process: {len(comments)}")
+    
     comment_dict = {}
     top_level_comments = []
     
@@ -43,19 +45,27 @@ def display_nested_comments(comments, highlight_comment_id=None):
         }
         if comment['parent_id'] == post_id:
             top_level_comments.append(comment['id'])
+            print(f"Found top level comment: {comment['id']} with author: {comment['author']}")
         elif comment['parent_id'] in comment_dict:
             comment_dict[comment['parent_id']]['replies'].append(comment['id'])
+            print(f"Found nested reply: {comment['id']} under parent: {comment['parent_id']}")
+    
+    print(f"Number of top-level comments: {len(top_level_comments)}")
+    print(f"Total number of reply relationships: {sum(len(c['replies']) for c in comment_dict.values())}")
     
     # Build HTML for nested comments
     def build_comment_html(comment_id, level=0):
         if comment_id not in comment_dict:
+            print(f"Warning: Comment {comment_id} not found in dictionary")
             return ""
         
         comment = comment_dict[comment_id]['data']
-        is_highlighted = comment['id'] == highlight_comment_id
         replies = comment_dict[comment_id]['replies']
         
-        # Generate level label
+        if replies:
+            print(f"Building HTML for comment {comment_id} with {len(replies)} replies at level {level}")
+        
+        is_highlighted = comment['id'] == highlight_comment_id
         level_label = {
             0: "Reply to Original Post (Level 1)",
             1: "Reply to Original Comment (Level 2)",
@@ -483,4 +493,5 @@ try:
 
 except Exception as e:
     st.error(f"Error loading post: {str(e)}")
+    
     
