@@ -339,12 +339,30 @@ with st.sidebar:
         """
         <script>
         function expandAll() {
+            console.log('Starting expandAll function');
             var container = document.querySelector('.comments-container');
+            console.log('Container found:', container !== null);
+            
             if (container) {
-                // Get all expand buttons and trigger their click event
+                var allReplies = container.getElementsByClassName('replies');
+                console.log('Number of replies found:', allReplies.length);
+                
                 var allButtons = container.getElementsByClassName('expand-button');
-                for (var i = 0; i < allButtons.length; i++) {
-                    allButtons[i].click();  // This will trigger the toggleReplies function
+                console.log('Number of buttons found:', allButtons.length);
+                
+                for (var i = 0; i < allReplies.length; i++) {
+                    var reply = allReplies[i];
+                    var commentId = reply.id.replace('replies-', '');
+                    console.log('Processing reply:', commentId);
+                    
+                    reply.style.display = 'block';
+                    
+                    var button = document.getElementById('button-' + commentId);
+                    if (button) {
+                        var numReplies = button.textContent.match(/\d+/)[0];
+                        button.textContent = `[-] Hide ${numReplies} ${numReplies === '1' ? 'reply' : 'replies'}`;
+                        console.log('Updated button:', commentId);
+                    }
                 }
             }
         }
