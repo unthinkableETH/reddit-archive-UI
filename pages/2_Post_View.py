@@ -338,23 +338,36 @@ with st.sidebar:
     st.components.v1.html(
         """
         <script>
-        function toggleAllComments(shouldExpand) {
-            // Get all reply containers
-            const replies = document.getElementsByClassName('replies');
-            const buttons = document.getElementsByClassName('expand-button');
+        function expandAll() {
+            setTimeout(function() {
+                var replies = document.getElementsByClassName('replies');
+                for (var i = 0; i < replies.length; i++) {
+                    replies[i].style.display = 'block';
+                }
+                
+                var buttons = document.getElementsByClassName('expand-button');
+                for (var i = 0; i < buttons.length; i++) {
+                    var text = buttons[i].textContent;
+                    var count = text.match(/\d+/)[0];
+                    var plural = count === '1' ? 'reply' : 'replies';
+                    buttons[i].textContent = `[-] Hide ${count} ${plural}`;
+                }
+            }, 100);
+        }
+
+        function collapseAll() {
+            var replies = document.getElementsByClassName('replies');
+            for (var i = 0; i < replies.length; i++) {
+                replies[i].style.display = 'none';
+            }
             
-            // Convert to arrays for easier manipulation
-            Array.from(replies).forEach(reply => {
-                reply.style.display = shouldExpand ? 'block' : 'none';
-            });
-            
-            Array.from(buttons).forEach(button => {
-                const count = button.textContent.match(/\d+/)[0];
-                const plural = count === '1' ? 'reply' : 'replies';
-                button.textContent = shouldExpand ? 
-                    `[-] Hide ${count} ${plural}` : 
-                    `[+] Show ${count} ${plural}`;
-            });
+            var buttons = document.getElementsByClassName('expand-button');
+            for (var i = 0; i < buttons.length; i++) {
+                var text = buttons[i].textContent;
+                var count = text.match(/\d+/)[0];
+                var plural = count === '1' ? 'reply' : 'replies';
+                buttons[i].textContent = `[+] Show ${count} ${plural}`;
+            }
         }
         </script>
         """,
@@ -366,7 +379,7 @@ with st.sidebar:
             st.components.v1.html(
                 """
                 <script>
-                    toggleAllComments(true);
+                    expandAll();
                 </script>
                 """,
                 height=0
@@ -377,7 +390,7 @@ with st.sidebar:
             st.components.v1.html(
                 """
                 <script>
-                    toggleAllComments(false);
+                    collapseAll();
                 </script>
                 """,
                 height=0
