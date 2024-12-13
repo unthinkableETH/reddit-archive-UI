@@ -1,7 +1,7 @@
 import streamlit as st
 import streamlit.components.v1 as components
 import requests
-from utils import format_date
+from utils import format_date, DARK_THEME_CSS
 
 # API endpoint constants
 API_BASE_URL = "https://m6njm571hh.execute-api.us-east-2.amazonaws.com"
@@ -238,7 +238,6 @@ COMMENTS_CSS = """
             padding: 18px 22px;
             border-left: 3px solid #555;
             position: relative;
-            line-height: 1.6;
         }
         .comment[data-level="0"] { 
             margin-left: 0; 
@@ -253,16 +252,6 @@ COMMENTS_CSS = """
             padding-bottom: 8px;
             border-bottom: 1px solid rgba(255, 255, 255, 0.08);
         }
-        .author {
-            color: #fff;
-            font-weight: 500;
-            font-size: 0.95em;
-        }
-        .level-label {
-            color: #888;
-            font-style: italic;
-            font-size: 0.9em;
-        }
         .metadata {
             color: #777;
             font-size: 0.85em;
@@ -271,7 +260,6 @@ COMMENTS_CSS = """
             margin: 0;
             padding: 5px 0 10px 0;
             white-space: pre-wrap;
-            font-size: 0.95em;
             color: rgba(255, 255, 255, 0.9);
         }
         button.expand-button {
@@ -282,7 +270,6 @@ COMMENTS_CSS = """
             font-size: 0.85em;
             padding: 6px 0;
             margin-top: 8px;
-            font-family: monospace;
         }
         .replies {
             margin-top: 14px;
