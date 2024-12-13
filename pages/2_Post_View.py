@@ -339,21 +339,12 @@ with st.sidebar:
         """
         <script>
         function expandAll() {
-            // Find the comments container
             var container = document.querySelector('.comments-container');
             if (container) {
-                // Get all reply sections within the container
-                var allReplies = container.getElementsByClassName('replies');
-                for (var i = 0; i < allReplies.length; i++) {
-                    allReplies[i].style.display = 'block';
-                }
-                
-                // Update all expand buttons
+                // Get all expand buttons and trigger their click event
                 var allButtons = container.getElementsByClassName('expand-button');
                 for (var i = 0; i < allButtons.length; i++) {
-                    var button = allButtons[i];
-                    var numReplies = button.textContent.match(/\d+/)[0];
-                    button.textContent = `[-] Hide ${numReplies} ${numReplies === '1' ? 'reply' : 'replies'}`;
+                    allButtons[i].click();  // This will trigger the toggleReplies function
                 }
             }
         }
@@ -384,13 +375,6 @@ with st.sidebar:
             st.components.v1.html(
                 """
                 <script>
-                    document.addEventListener('DOMContentLoaded', function() {
-                        expandAll();
-                    });
-                    window.addEventListener('load', function() {
-                        expandAll();
-                    });
-                    // Also try immediate execution
                     expandAll();
                 </script>
                 """,
@@ -481,3 +465,4 @@ try:
 
 except Exception as e:
     st.error(f"Error loading post: {str(e)}")
+    
