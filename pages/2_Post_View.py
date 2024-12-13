@@ -1,7 +1,7 @@
 import streamlit as st
 import streamlit.components.v1 as components
 import requests
-from utils import format_date, DARK_THEME_CSS
+from utils import format_date
 
 # API endpoint constants
 API_BASE_URL = "https://m6njm571hh.execute-api.us-east-2.amazonaws.com"
@@ -247,24 +247,11 @@ COMMENTS_CSS = """
         }
         .nested-comment {
             background-color: rgba(255, 255, 255, 0.015);
-            margin-left: 52px;
-        }
-        .comment[data-level="2"] {
-            background-color: rgba(255, 255, 255, 0.022);
-        }
-        .comment[data-level="3"] {
-            background-color: rgba(255, 255, 255, 0.029);
         }
         .comment-header {
             margin-bottom: 1em;
             padding-bottom: 8px;
             border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-        }
-        .author-line {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 4px;
         }
         .author {
             color: #fff;
@@ -286,8 +273,6 @@ COMMENTS_CSS = """
             white-space: pre-wrap;
             font-size: 0.95em;
             color: rgba(255, 255, 255, 0.9);
-            letter-spacing: 0.2px;
-            word-spacing: 0.5px;
         }
         button.expand-button {
             background: none;
@@ -298,19 +283,10 @@ COMMENTS_CSS = """
             padding: 6px 0;
             margin-top: 8px;
             font-family: monospace;
-            letter-spacing: 0.5px;
-            opacity: 0.9;
-            margin-left: -3px;
         }
         .replies {
             margin-top: 14px;
             position: relative;
-            border-left: 3px solid #555;
-            margin-left: -3px;
-            padding-left: 3px;
-        }
-        .replies::before {
-            display: none;
         }
     </style>
 """
@@ -339,86 +315,34 @@ with st.sidebar:
         }[x]
     )
     
-    # Add expand/collapse all buttons
+    # Just collapse all button
     st.divider()
     st.subheader("Comment Display")
-    col1, col2 = st.columns(2)
-    
-    # Add this JavaScript to the page once
-    st.components.v1.html(
-        """
-        <script>
-        function expandAll() {
-            console.log('Starting expandAll function');
-            var container = document.querySelector('.comments-container');
-            console.log('Container found:', container !== null);
-            
-            if (container) {
-                var allReplies = container.getElementsByClassName('replies');
-                console.log('Number of replies found:', allReplies.length);
-                
-                var allButtons = container.getElementsByClassName('expand-button');
-                console.log('Number of buttons found:', allButtons.length);
-                
-                for (var i = 0; i < allReplies.length; i++) {
-                    var reply = allReplies[i];
-                    var commentId = reply.id.replace('replies-', '');
-                    console.log('Processing reply:', commentId);
+    if st.button("Collapse All"):
+        st.components.v1.html(
+            """
+            <script>
+            function collapseAll() {
+                var container = document.querySelector('.comments-container');
+                if (container) {
+                    var allReplies = container.getElementsByClassName('replies');
+                    for (var i = 0; i < allReplies.length; i++) {
+                        allReplies[i].style.display = 'none';
+                    }
                     
-                    reply.style.display = 'block';
-                    
-                    var button = document.getElementById('button-' + commentId);
-                    if (button) {
+                    var allButtons = container.getElementsByClassName('expand-button');
+                    for (var i = 0; i < allButtons.length; i++) {
+                        var button = allButtons[i];
                         var numReplies = button.textContent.match(/\d+/)[0];
-                        button.textContent = `[-] Hide ${numReplies} ${numReplies === '1' ? 'reply' : 'replies'}`;
-                        console.log('Updated button:', commentId);
+                        button.textContent = `[+] Show ${numReplies} ${numReplies === '1' ? 'reply' : 'replies'}`;
                     }
                 }
             }
-        }
-
-        function collapseAll() {
-            var container = document.querySelector('.comments-container');
-            if (container) {
-                var allReplies = container.getElementsByClassName('replies');
-                for (var i = 0; i < allReplies.length; i++) {
-                    allReplies[i].style.display = 'none';
-                }
-                
-                var allButtons = container.getElementsByClassName('expand-button');
-                for (var i = 0; i < allButtons.length; i++) {
-                    var button = allButtons[i];
-                    var numReplies = button.textContent.match(/\d+/)[0];
-                    button.textContent = `[+] Show ${numReplies} ${numReplies === '1' ? 'reply' : 'replies'}`;
-                }
-            }
-        }
-        </script>
-        """,
-        height=0
-    )
-    
-    with col1:
-        if st.button("Expand All"):
-            st.components.v1.html(
-                """
-                <script>
-                    expandAll();
-                </script>
-                """,
-                height=0
-            )
-    
-    with col2:
-        if st.button("Collapse All"):
-            st.components.v1.html(
-                """
-                <script>
-                    collapseAll();
-                </script>
-                """,
-                height=0
-            )
+            collapseAll();
+            </script>
+            """,
+            height=0
+        )
 
 try:
     # Fetch post
@@ -493,5 +417,3 @@ try:
 
 except Exception as e:
     st.error(f"Error loading post: {str(e)}")
-    
-    
